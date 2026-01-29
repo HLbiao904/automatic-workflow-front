@@ -1,19 +1,20 @@
 <script setup>
-import { ref, onMounted, markRaw } from "vue";
-import { VueFlow } from "@vue-flow/core";
+import { ref, onMounted, markRaw, computed } from "vue";
 import { Background } from "@vue-flow/background";
 import { MiniMap } from "@vue-flow/minimap";
-import { useVueFlow } from "@vue-flow/core";
+import { useVueFlow, MarkerType, VueFlow } from "@vue-flow/core";
 import service from "./service/index.js";
 import { Controls } from "@vue-flow/controls";
 
 // these components are only shown as examples of how to use a custom node or edge
 // you can find many examples of how to create these custom components in the examples page of the docs
+import StartNode from "./nodes/startNode.vue";
 import CommonNode from "./nodes/commonNode.vue";
 import SwitchNode from "./nodes/switchNode.vue";
 import ForNode from "./nodes/forNode.vue";
 import BooleanNode from "./nodes/booleanNode.vue";
 import WhenNode from "./nodes/whenNode.vue";
+import DefaultEdge from "./components/defaultEdge.vue";
 import { compileFlow } from "./tools/compiler.js";
 import { validateGraph } from "./tools/validate.js";
 // import default controls styles
@@ -23,6 +24,8 @@ import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { Close } from "@element-plus/icons-vue";
 
+import NodeSearchPanel from "./components/searchNodePanel.vue";
+
 const { project, addEdges } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
@@ -31,22 +34,20 @@ const paramsDialog = ref(false);
 const paramsDialogFormData = ref({});
 const paramsDialogRules = ref({});
 const paramsDialogRef = ref(null);
+const activeCategories = ref([]); // 展开的分类
+const showSidebar = ref(true);
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
   for: markRaw(ForNode),
   boolean: markRaw(BooleanNode),
   when: markRaw(WhenNode),
+  start: markRaw(StartNode),
 };
-const nodeTemplates = ref([
-  {
-    id: Date.now().toString(),
-    type: "WHEN",
-    label: "并行节点",
-    nodeId: "whenNode",
-    params: [],
-  },
-]);
+const edgeTypes = {
+  default: markRaw(DefaultEdge),
+};
+const nodeTemplates = ref([]);
 let stompClient = null;
 onMounted(() => {
   service.get("flow/getNodes").then((res) => {
@@ -71,8 +72,30 @@ onMounted(() => {
   stompClient.activate(); // 一定要 activate 才会连接
 });
 
-function startDrag(template) {
-  document.onmouseup = (e) => {
+const groupedNodes = computed(() => {
+  const map = {};
+
+  nodeTemplates.value.forEach((node) => {
+    const code = node.categoryCode || "DEFAULT";
+
+    if (!map[code]) {
+      map[code] = {
+        categoryCode: code,
+        categoryLabel: node.categoryLabel || "未分类",
+        categoryOrder: node.categoryOrder ?? 999,
+        nodes: [],
+      };
+    }
+
+    map[code].nodes.push(node);
+  });
+
+  // 转数组 + 排序
+  return Object.values(map).sort((a, b) => a.categoryOrder - b.categoryOrder);
+});
+
+function startDrag({ template, e }) {
+  document.onmouseup = () => {
     const position = project({ x: e.clientX, y: e.clientY });
 
     nodes.value.push({
@@ -128,8 +151,8 @@ function handleUsed(nodeId, handleId) {
   );
 }
 
-function onConnect(params) {
-  const { source, target, sourceHandle, targetHandle } = params;
+function onConnect(edgesParams) {
+  const { source, target, sourceHandle, targetHandle } = edgesParams;
 
   // 1️⃣ 禁止自己连自己
   if (source === target) {
@@ -164,7 +187,10 @@ function onConnect(params) {
   // 5️⃣ 添加边
   edges.value.push({
     id: `${source}-${sh}-${target}-${th}`,
-    ...params,
+    ...edgesParams,
+    type: "default",
+    markerEnd: MarkerType.ArrowClosed,
+    //data: { label: "123" },// 线label
   });
 }
 function onSubmit() {
@@ -235,7 +261,7 @@ function generateEL() {
 const nodes = ref([
   {
     id: "1",
-    type: "input",
+    type: "start",
     position: { x: 250, y: 5 },
     data: { label: "开始" },
   },
@@ -246,6 +272,15 @@ const edges = ref([]);
 
 <template>
   <div class="flow-editor">
+    <div class="left-panel" v-if="showSidebar">
+      <div class="header">
+        <div class="sidebar" @click="showSidebar = !showSidebar">
+          <img src="./assets/sidebar.svg" />
+        </div>
+      </div>
+      <div class="center"></div>
+      <div class="bottom"></div>
+    </div>
     <div class="nodeButtonWrapper">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
         <img class="btn-img" src="./assets/addNode.svg" />
@@ -287,22 +322,8 @@ const edges = ref([]);
           ><el-icon><Close /></el-icon
         ></el-button>
       </div>
-
-      <!-- Node list -->
-      <div class="node-list">
-        <el-card
-          v-for="n in nodeTemplates"
-          :key="n.id"
-          shadow="hover"
-          class="node-item"
-          @mousedown.prevent="startDrag(n)"
-        >
-          <div class="node-row">
-            <span class="node-name">{{ n.label }}</span>
-            <span class="node-type">{{ n.type }}</span>
-          </div>
-        </el-card>
-      </div>
+      <!-- 搜索框加节点列表 -->
+      <NodeSearchPanel :nodes="nodeTemplates" @node-drag-start="startDrag" />
     </el-drawer>
 
     <div class="center-panel">
@@ -311,6 +332,7 @@ const edges = ref([]);
         v-model:edges="edges"
         class="flow"
         :node-types="nodeTypes"
+        :edge-types="edgeTypes"
         @node-click="onNodeClick"
         @connect="onConnect"
       >
@@ -375,7 +397,7 @@ const edges = ref([]);
   </div>
 </template>
 
-<style>
+<style lang="scss" scoped>
 /* import the necessary styles for Vue Flow to work */
 @import "@vue-flow/core/dist/style.css";
 /* import the default theme, this is optional but generally recommended */
@@ -392,6 +414,34 @@ body,
   height: 100vh;
   width: 100%;
   position: relative;
+}
+.left-panel {
+  flex: 2;
+  border-right: 1px solid #eee;
+  .header {
+    display: flex;
+    padding: 0 10px;
+    justify-content: flex-end;
+    align-items: center;
+    height: 5%;
+    border-bottom: 1px solid #eee;
+    .sidebar {
+      width: 18px;
+      height: 18px;
+      img {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+  .center {
+    height: 77%;
+    border-bottom: 1px solid #eee;
+  }
+  .bottom {
+    height: 18%;
+    border-top: 1px solid #eee;
+  }
 }
 .nodeButtonWrapper {
   width: 42px;
@@ -424,7 +474,7 @@ body,
 }
 
 .center-panel {
-  flex: 1;
+  flex: 14;
   position: relative;
 }
 
@@ -473,32 +523,46 @@ body,
 /* 单个节点 */
 .node-item {
   cursor: grab;
+  margin-bottom: 6px;
   user-select: none;
   border-radius: 8px;
-  padding: 6px 10px;
   transition: all 0.2s ease;
 }
 
 .node-item:hover {
-  transform: translateX(-2px);
+  transform: translateX(-1px);
 }
 
-/* 行布局 */
 .node-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-/* 左侧名称 */
 .node-name {
   font-size: 14px;
   font-weight: 500;
 }
 
-/* 右侧类型标识 */
 .node-type {
   font-size: 12px;
   color: #999;
+}
+
+.node-category {
+  margin-bottom: 12px;
+}
+
+.category-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  margin: 8px 4px;
+  padding-left: 4px;
+  border-left: 3px solid #409eff;
+}
+
+.el-collapse-item__header {
+  padding-left: 6px;
 }
 </style>

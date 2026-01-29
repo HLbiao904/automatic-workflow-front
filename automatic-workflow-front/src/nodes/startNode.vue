@@ -1,0 +1,44 @@
+<script setup>
+import { Handle, Position } from "@vue-flow/core";
+</script>
+
+<template>
+  <div class="start-node">
+    <div class="start-circle">开始</div>
+
+    <!-- 只有一个输出点（n8n 就是这样） -->
+    <Handle
+      id="out"
+      type="source"
+      :position="Position.Right"
+      class="start-handle"
+    />
+  </div>
+</template>
+
+<style scoped>
+.start-node {
+  position: relative;
+}
+
+/* 主体 */
+.start-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: 30px 5px 5px 30px;
+  border: 2px solid #dcdcdc;
+  background: #fff;
+  font-size: 16px;
+  text-align: center;
+  line-height: 90px;
+  user-select: none;
+}
+
+/* 连接点 */
+.start-handle {
+  width: 15px;
+  height: 15px;
+  background: #f9f9f9;
+  border: 1px solid #999;
+}
+</style>

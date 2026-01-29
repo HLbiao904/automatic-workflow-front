@@ -1,10 +1,10 @@
 import { ElMessage } from "element-plus";
 
-// 校验唯一入口 input 节点
+// 校验唯一入口 start 节点
 function validateInput(nodes) {
-  const inputNodes = nodes.filter((n) => n.type === "input");
-  if (inputNodes.length !== 1) {
-    ElMessage.primary(`图必须且只能有 1 个 input 节点`);
+  const startNodes = nodes.filter((n) => n.type === "start");
+  if (startNodes.length !== 1) {
+    ElMessage.primary(`图必须且只能有 1 个 start 节点`);
   }
 }
 

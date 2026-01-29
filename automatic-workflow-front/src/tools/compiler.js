@@ -12,7 +12,7 @@ export function compileFlow(nodes, edges) {
 
   const startNode = findStartNode(nodes);
   if (!startNode) {
-    ElMessage.primary("未找到开始节点（input）");
+    ElMessage.primary("未找到开始节点（start）");
   }
 
   return compileNode(startNode.id, nodeMap, graph);
@@ -38,7 +38,7 @@ function buildGraph(edges) {
 }
 
 function findStartNode(nodes) {
-  return nodes.find((n) => n.type === "input");
+  return nodes.find((n) => n.type === "start");
 }
 
 /** ---------- 核心递归编译 ---------- **/
@@ -48,7 +48,7 @@ function compileNode(nodeId, nodeMap, graph) {
   if (!node) return "";
 
   switch (node.type) {
-    case "input": {
+    case "start": {
       const next = graph[nodeId]?.[0]?.target;
       const seq = compileSequence(next, nodeMap, graph);
       return wrapThen(seq, true);
