@@ -1,0 +1,23 @@
+automatic-workflow-front/vite.config.js
+  5d04fc44e74bfaee 33-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.39",
+  "base_commit_sha": "7678af8eff0d76913f64a0d033d1a3e3409d8224",
+  "prompts": {
+    "5d04fc44e74bfaee": {
+      "agent_id": {
+        "tool": "turing-coder",
+        "id": "Fx9dCtG3ZCys",
+        "model": "gpt-5"
+      },
+      "human_author": "huangbiao5 <14261354+hlbiao@user.noreply.gitee.com>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
