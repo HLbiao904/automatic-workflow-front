@@ -53,7 +53,6 @@ const collapsed = computed(() => !props.showSidebar);
 const emit = defineEmits(["update:showSidebar"]);
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
-  console.log("toggle sidebar", !props.showSidebar);
 }
 </script>
 
@@ -65,14 +64,14 @@ function toggle() {
   //   transition: width 0.25s ease;
   flex-direction: column;
   .header {
+    padding: 0;
+    height: 32px;
+    margin-top: 10px;
     .icon {
       height: 100%;
       width: 50%;
       background-color: antiquewhite;
     }
-    padding: 0;
-    height: 32px;
-    // border-bottom: 1px solid #eee;
   }
   .center {
     flex: 1;

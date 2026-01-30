@@ -1,6 +1,8 @@
 <script setup>
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@vue-flow/core";
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
+import { useVueFlow } from "@vue-flow/core";
+const { removeEdges } = useVueFlow();
 
 const props = defineProps([
   "id",
@@ -16,7 +18,6 @@ const props = defineProps([
   "markerStart",
   "selected",
 ]);
-
 const pathData = computed(() => {
   return getBezierPath({
     sourceX: props.sourceX,
@@ -31,6 +32,10 @@ const pathData = computed(() => {
 const edgePath = computed(() => pathData.value[0]);
 const labelX = computed(() => pathData.value[1]);
 const labelY = computed(() => pathData.value[2]);
+
+function deleteEdge() {
+  removeEdges(props.id);
+}
 </script>
 
 <template>
@@ -43,38 +48,72 @@ const labelY = computed(() => pathData.value[2]);
         strokeWidth: selected ? 2.5 : 2,
       }"
     />
-
-    <EdgeLabelRenderer v-if="data?.label">
+    <EdgeLabelRenderer>
       <div
-        class="edge-label"
+        class="edge-label-wrapper"
         :style="{
-          transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+          left: `${labelX}px`,
+          top: `${labelY}px`,
+          transform: 'translate(-50%, -50%)',
         }"
       >
-        {{ data?.label }}
+        <div
+          class="edge-button"
+          v-show="data?.hovered"
+          @mouseenter.stop
+          @mouseleave.stop
+        >
+          <div class="buttonItem">
+            <img
+              src="../assets/delete.svg"
+              alt="Delete Edge"
+              @click.stop="deleteEdge"
+            />
+          </div>
+        </div>
       </div>
-    </EdgeLabelRenderer></g
-  >
+    </EdgeLabelRenderer>
+  </g>
 </template>
 
-<style scoped>
-.edge-label.selected {
-  border-color: #409eff;
-  color: #409eff;
-  background: #ecf5ff;
+<style scoped lang="scss">
+.edge-button {
+  .buttonItem {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+    background-color: #cccccc;
+  }
+  img {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
 }
 
-.edge-label {
+.edge-label-wrapper {
   position: absolute;
-  background: #ffffff;
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 12px;
-  color: #606266;
-  white-space: nowrap;
-
   pointer-events: all;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.edge-delete {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 18px;
+  text-align: center;
+  padding: 0;
+}
+
+.edge-delete:hover {
+  background: #f78989;
 }
 </style>

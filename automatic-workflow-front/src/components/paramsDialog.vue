@@ -72,9 +72,7 @@ defineProps({
   activeNode: {
     type: Object,
     required: true,
-    default: () => {
-      return {};
-    },
+    default: null,
   },
 });
 const emit = defineEmits([

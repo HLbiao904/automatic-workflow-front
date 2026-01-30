@@ -29,7 +29,7 @@ import SideBar from "./components/sideBar.vue";
 import paramsDialog from "./components/paramsDialog.vue";
 const { project, addEdges, getViewport } = useVueFlow();
 const activeNode = ref(null);
-const showNodesDialog = ref(false);
+const showNodesDialog = ref(true);
 
 const showParamsDialog = ref(false);
 const paramsDialogFormData = ref({});
@@ -142,6 +142,8 @@ function startDrag(template) {
 
 function onNodeClick({ node }) {
   activeNode.value = node;
+  // 节点没有nodeId直接返回,避免点击开始节点控制台报错
+  if (!node.data.nodeId) return;
   console.log("Node clicked:", node);
   // 复制节点数据到表单对象
   paramsDialogFormData.value = {
@@ -172,22 +174,52 @@ function handleUsed(nodeId, handleId) {
       (e.target === nodeId && norm(e.targetHandle) === handleId),
   );
 }
+function willCreateCycle(edges, source, target) {
+  // 构建邻接表
+  const graph = new Map();
+
+  edges.forEach((e) => {
+    if (!graph.has(e.source)) {
+      graph.set(e.source, []);
+    }
+    graph.get(e.source).push(e.target);
+  });
+
+  // DFS：从 target 出发，看能否走到 source
+  const visited = new Set();
+
+  function dfs(node) {
+    if (node === source) return true;
+    if (visited.has(node)) return false;
+
+    visited.add(node);
+
+    const next = graph.get(node) || [];
+    return next.some(dfs);
+  }
+
+  return dfs(target);
+}
 
 function onConnect(edgesParams) {
   const { source, target, sourceHandle, targetHandle } = edgesParams;
 
   // 1️⃣ 禁止自己连自己
   if (source === target) {
-    alert("不能连接自己");
+    ElMessage.warning("不能连接自己");
     return;
   }
-
+  // 环路校验
+  if (willCreateCycle(edges.value, source, target)) {
+    ElMessage.warning("不允许形成环路");
+    return;
+  }
   const sh = norm(sourceHandle);
   const th = norm(targetHandle);
 
   // 2️⃣ 只允许 out -> in
   if (!isOut(sh) || !isIn(th)) {
-    alert("只能从 out 连接到 in");
+    ElMessage.warning("只能从 out 连接到 in");
     return;
   }
 
@@ -202,7 +234,7 @@ function onConnect(edgesParams) {
   const targetHandleUsed = handleUsed(target, th);
 
   if ((!allowMultiSource && sourceHandleUsed) || targetHandleUsed) {
-    alert("该连接点已被占用");
+    ElMessage.warning("该连接点已被占用");
     return;
   }
 
@@ -237,7 +269,7 @@ function generateEL() {
   const activeNodes = nodes.value.filter((n) => connectedNodeIds.has(n.id));
 
   if (activeNodes.length === 0) {
-    ElMessage.primary("无可用工作流");
+    ElMessage.warning("无可用工作流");
     return;
   }
 
@@ -245,7 +277,7 @@ function generateEL() {
     validateGraph(nodes.value, edges.value);
     console.log("图合法");
   } catch (err) {
-    ElMessage.primary(err.message);
+    ElMessage.warning(err.message);
   }
   try {
     validateGraph(activeNodes, edges.value);
@@ -271,10 +303,21 @@ function generateEL() {
         console.log("Execute response:", res);
       });
   } catch (err) {
-    alert(err.message);
+    ElMessage.warning(err.message);
   }
 }
+function onEdgeEnter({ edge }) {
+  clearTimeout(hideTimer);
+  edge.data ||= {};
+  edge.data.hovered = true;
+}
 
+function onEdgeLeave({ edge }) {
+  hideTimer = setTimeout(() => {
+    edge.data.hovered = false;
+  }, 150);
+}
+let hideTimer = null;
 const nodes = ref([
   /*  {
     id: "1",
@@ -336,6 +379,8 @@ const edges = ref([]);
         :edge-types="edgeTypes"
         @node-click="onNodeClick"
         @connect="onConnect"
+        @edgeMouseEnter="onEdgeEnter"
+        @edgeMouseLeave="onEdgeLeave"
       >
         <Controls />
         <MiniMap pannable zoomable />
@@ -344,6 +389,7 @@ const edges = ref([]);
     </div>
 
     <ParamsDialog
+      v-if="activeNode"
       ref="paramsDialogRef"
       v-model:showParamsDialog="showParamsDialog"
       :paramsDialogFormData="paramsDialogFormData"
