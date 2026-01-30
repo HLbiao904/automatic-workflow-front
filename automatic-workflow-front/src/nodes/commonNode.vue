@@ -26,6 +26,11 @@
         :position="Position.Right"
         style="top: 50%"
       />
+      <!-- n8n 风格加号 -->
+      <div v-if="!isConnected" class="add-wrapper" @click.stop="addNode">
+        <span class="dash-line"></span>
+        <span class="plus">+</span>
+      </div>
     </div>
 
     <div class="node-title">{{ props.label }}</div>
@@ -36,11 +41,19 @@
 import { ref, computed, onMounted } from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import { NodeToolbar } from "@vue-flow/node-toolbar";
-const { removeNodes } = useVueFlow();
+const { removeNodes, edges } = useVueFlow();
 const hover = ref(false);
+const outputId = "out";
+const emit = defineEmits(["add-node"]);
 function removeNode() {
   removeNodes([props.id]);
 }
+function addNode() {
+  emit("add-node");
+}
+const isConnected = computed(() =>
+  edges.value.some((e) => e.source === props.id && e.sourceHandle === outputId),
+);
 const props = defineProps({
   id: {
     type: String,
@@ -137,5 +150,43 @@ onMounted(() => {
 .node-icon {
   width: 100%;
   height: 100%;
+}
+/* 设置添加节点样式 */
+.out-handle {
+  background: #409eff;
+}
+
+.add-wrapper {
+  position: absolute;
+  right: -75px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.dash-line {
+  width: 42px;
+  height: 2px;
+  /*   background: repeating-linear-gradient(
+    to right,
+    #c0c4cc,
+    #c0c4cc 4px,
+    transparent 4px,
+    transparent 8px
+  ); */
+  background: #c0c4cc;
+}
+
+.plus {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid #c0c4cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
 }
 </style>

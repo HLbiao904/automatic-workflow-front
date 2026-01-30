@@ -317,6 +317,9 @@ function onEdgeLeave({ edge }) {
     edge.data.hovered = false;
   }, 150);
 }
+function openDrawer() {
+  showNodesDialog.value = true;
+}
 let hideTimer = null;
 const nodes = ref([
   /*  {
@@ -382,6 +385,9 @@ const edges = ref([]);
         @edgeMouseEnter="onEdgeEnter"
         @edgeMouseLeave="onEdgeLeave"
       >
+        <template #node-common="nodeProps">
+          <CommonNode v-bind="nodeProps" @add-node="openDrawer" />
+        </template>
         <Controls />
         <MiniMap pannable zoomable />
         <Background pattern-color="#aaa" :gap="16" variant="dots" />
