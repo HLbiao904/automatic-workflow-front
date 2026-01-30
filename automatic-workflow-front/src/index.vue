@@ -25,17 +25,20 @@ import SockJS from "sockjs-client";
 import { Close } from "@element-plus/icons-vue";
 
 import NodeSearchPanel from "./components/searchNodePanel.vue";
-
-const { project, addEdges } = useVueFlow();
+import SideBar from "./components/sideBar.vue";
+import paramsDialog from "./components/paramsDialog.vue";
+const { project, addEdges, getViewport } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
 
-const paramsDialog = ref(false);
+const showParamsDialog = ref(false);
 const paramsDialogFormData = ref({});
 const paramsDialogRules = ref({});
 const paramsDialogRef = ref(null);
 const activeCategories = ref([]); // 展开的分类
 const showSidebar = ref(true);
+const flowWrapper = ref(null);
+const vueFlow = ref(null);
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
@@ -50,6 +53,7 @@ const edgeTypes = {
 const nodeTemplates = ref([]);
 let stompClient = null;
 onMounted(() => {
+  // 获取节点列表
   service.get("flow/getNodes").then((res) => {
     const result = res.data.map((item) => {
       return {
@@ -61,6 +65,7 @@ onMounted(() => {
     console.log("Fetched node templates:", nodeTemplates);
   });
 
+  // 初始化 STOMP 客户端
   const socket = new SockJS("/ws");
   stompClient = new Client({
     webSocketFactory: () => socket,
@@ -70,6 +75,19 @@ onMounted(() => {
     console.log("STOMP connected");
   };
   stompClient.activate(); // 一定要 activate 才会连接
+
+  // 添加开始节
+  nodes.value = [
+    {
+      id: "1",
+      type: "start",
+      position: {
+        x: 250,
+        y: 120,
+      },
+      data: { label: "开始" },
+    },
+  ];
 });
 
 const groupedNodes = computed(() => {
@@ -94,9 +112,13 @@ const groupedNodes = computed(() => {
   return Object.values(map).sort((a, b) => a.categoryOrder - b.categoryOrder);
 });
 
-function startDrag({ template, e }) {
-  document.onmouseup = () => {
-    const position = project({ x: e.clientX, y: e.clientY });
+function startDrag(template) {
+  const wrapperRect = flowWrapper.value.getBoundingClientRect();
+  document.onmouseup = (upEvent) => {
+    const position = project({
+      x: upEvent.clientX - wrapperRect.left - 45,
+      y: upEvent.clientY - wrapperRect.top - 45,
+    });
 
     nodes.value.push({
       id: Date.now().toString(),
@@ -130,7 +152,7 @@ function onNodeClick({ node }) {
     params: node.data.params.map((p) => ({ ...p })),
   };
 
-  paramsDialog.value = true; // 显示弹窗
+  showParamsDialog.value = true; // 显示弹窗
 }
 function norm(h) {
   return h ?? "__default__";
@@ -193,12 +215,7 @@ function onConnect(edgesParams) {
     //data: { label: "123" },// 线label
   });
 }
-function onSubmit() {
-  paramsDialog.value = false;
-}
-function onConceal() {
-  paramsDialog.value = false;
-}
+
 function getRelateNodes() {
   const relations = nodes.value.map((node) => {
     const curId = node.id;
@@ -259,12 +276,12 @@ function generateEL() {
 }
 
 const nodes = ref([
-  {
+  /*  {
     id: "1",
     type: "start",
     position: { x: 250, y: 5 },
     data: { label: "开始" },
-  },
+  }, */
 ]);
 
 const edges = ref([]);
@@ -272,15 +289,7 @@ const edges = ref([]);
 
 <template>
   <div class="flow-editor">
-    <div class="left-panel" v-if="showSidebar">
-      <div class="header">
-        <div class="sidebar" @click="showSidebar = !showSidebar">
-          <img src="./assets/sidebar.svg" />
-        </div>
-      </div>
-      <div class="center"></div>
-      <div class="bottom"></div>
-    </div>
+    <SideBar v-model:showSidebar="showSidebar" />
     <div class="nodeButtonWrapper">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
         <img class="btn-img" src="./assets/addNode.svg" />
@@ -288,12 +297,6 @@ const edges = ref([]);
       <button class="icon-btn" type="primary">
         <img class="btn-img" src="./assets/searchNode.svg" />
       </button>
-      <!--  <button class="icon-btn" type="primary">
-        <img class="btn-img" src="../assets/addNode.svg" />
-      </button>
-      <button class="icon-btn" type="primary">
-        <img class="btn-img" src="../assets/addNode.svg" />
-      </button> -->
     </div>
 
     <el-button
@@ -305,7 +308,6 @@ const edges = ref([]);
       ▶ 执行流程
     </el-button>
 
-    <!-- 自定义 Drawer -->
     <el-drawer
       v-model="showNodesDialog"
       direction="rtl"
@@ -315,19 +317,18 @@ const edges = ref([]);
       :modal-penetrable="true"
       class="node-drawer"
     >
-      <!-- Header -->
       <div class="drawer-header">
         <span>节点库</span>
         <el-button circle size="small" @click="showNodesDialog = false"
           ><el-icon><Close /></el-icon
         ></el-button>
       </div>
-      <!-- 搜索框加节点列表 -->
       <NodeSearchPanel :nodes="nodeTemplates" @node-drag-start="startDrag" />
     </el-drawer>
 
-    <div class="center-panel">
+    <div class="center-panel" ref="flowWrapper">
       <VueFlow
+        ref="vueFlow"
         v-model:nodes="nodes"
         v-model:edges="edges"
         class="flow"
@@ -342,58 +343,13 @@ const edges = ref([]);
       </VueFlow>
     </div>
 
-    <el-dialog
-      title="节点参数"
-      v-model="paramsDialog"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        :model="paramsDialogFormData"
-        ref="paramsDialogRef"
-        :rules="paramsDialogRules"
-        label-width="100px"
-        :inline="false"
-      >
-        <el-form-item label="nodeId">
-          <el-input
-            v-model="paramsDialogFormData.nodeId"
-            :disabled="true"
-          ></el-input>
-        </el-form-item>
-        <el-form-item label="Description">
-          <el-input
-            v-model="paramsDialogFormData.description"
-            :disabled="true"
-          ></el-input>
-        </el-form-item>
-        <el-form-item label="Type">
-          <el-input
-            v-model="paramsDialogFormData.type"
-            :disabled="true"
-          ></el-input>
-        </el-form-item>
-        <!-- <el-form-item label="Label">
-          <el-input v-model="paramsDialogFormData.label"></el-input>
-        </el-form-item> -->
-        <el-form-item
-          v-for="p in activeNode.data.params"
-          :key="p.name"
-          :label="p.name"
-        >
-          <el-input
-            :id="`param-${p.name}`"
-            v-model="p.value"
-            :placeholder="p.desc"
-          ></el-input>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="onSubmit">保存</el-button>
-          <el-button @click="onConceal">取消</el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+    <ParamsDialog
+      ref="paramsDialogRef"
+      v-model:showParamsDialog="showParamsDialog"
+      :paramsDialogFormData="paramsDialogFormData"
+      :paramsDialogRules="paramsDialogRules"
+      :activeNode="activeNode"
+    />
   </div>
 </template>
 
@@ -407,42 +363,15 @@ body,
 #app {
   height: 100%;
   margin: 0;
+  padding: 0;
 }
-
 .flow-editor {
   display: flex;
   height: 100vh;
   width: 100%;
   position: relative;
 }
-.left-panel {
-  flex: 2;
-  border-right: 1px solid #eee;
-  .header {
-    display: flex;
-    padding: 0 10px;
-    justify-content: flex-end;
-    align-items: center;
-    height: 5%;
-    border-bottom: 1px solid #eee;
-    .sidebar {
-      width: 18px;
-      height: 18px;
-      img {
-        width: 100%;
-        height: 100%;
-      }
-    }
-  }
-  .center {
-    height: 77%;
-    border-bottom: 1px solid #eee;
-  }
-  .bottom {
-    height: 18%;
-    border-top: 1px solid #eee;
-  }
-}
+
 .nodeButtonWrapper {
   width: 42px;
   position: absolute;
@@ -496,12 +425,10 @@ body,
   box-shadow: 0 6px 18px rgba(64, 158, 255, 0.35);
 }
 
-/* 自定义 drawer 样式 */
 .node-drawer {
   pointer-events: auto;
 }
 
-/* Header */
 .drawer-header {
   display: flex;
   justify-content: space-between;
@@ -512,15 +439,13 @@ body,
   border-bottom: 1px solid #eee;
 }
 
-/* 列表整体 */
 .node-list {
   margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px; /* 行距重点在这 */
+  gap: 10px;
 }
 
-/* 单个节点 */
 .node-item {
   cursor: grab;
   margin-bottom: 6px;

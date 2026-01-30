@@ -74,8 +74,8 @@ watch(keyword, () => {
 });
 
 /* 4️⃣ 拖拽 */
-function onMouseDown(e, node) {
-  emit("node-drag-start", { node, event: e });
+function onMouseDown(node) {
+  emit("node-drag-start", node);
 }
 </script>
 
