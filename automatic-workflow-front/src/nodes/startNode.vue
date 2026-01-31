@@ -4,7 +4,9 @@ import { Handle, Position } from "@vue-flow/core";
 
 <template>
   <div class="start-node">
-    <div class="start-circle">开始</div>
+    <div class="start-circle">
+      <img src="../assets/mousepointer.svg" />
+    </div>
 
     <!-- 只有一个输出点（n8n 就是这样） -->
     <Handle
@@ -16,7 +18,7 @@ import { Handle, Position } from "@vue-flow/core";
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .start-node {
   position: relative;
 }
@@ -25,6 +27,9 @@ import { Handle, Position } from "@vue-flow/core";
 .start-circle {
   width: 90px;
   height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 30px 5px 5px 30px;
   border: 2px solid #dcdcdc;
   background: #fff;
@@ -32,6 +37,10 @@ import { Handle, Position } from "@vue-flow/core";
   text-align: center;
   line-height: 90px;
   user-select: none;
+  img {
+    width: 45px;
+    height: 45px;
+  }
 }
 
 /* 连接点 */

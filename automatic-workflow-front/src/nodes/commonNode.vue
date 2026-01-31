@@ -10,7 +10,7 @@
       <button class="action-btn">⎘</button>
     </div>
 
-    <div class="common-node">
+    <div :class="['common-node', statusClass]">
       <div class="node-body">
         <img src="../assets/code-solid-full.svg" class="node-icon" />
       </div>
@@ -29,7 +29,7 @@
       <!-- n8n 风格加号 -->
       <div v-if="!isConnected" class="add-wrapper" @click.stop="addNode">
         <span class="dash-line"></span>
-        <span class="plus">+</span>
+        <span class="plus"><img src="../assets/add.svg" alt="" /></span>
       </div>
     </div>
 
@@ -38,13 +38,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUpdated } from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import { NodeToolbar } from "@vue-flow/node-toolbar";
 const { removeNodes, edges } = useVueFlow();
 const hover = ref(false);
 const outputId = "out";
 const emit = defineEmits(["add-node"]);
+
+const statusClass = computed(() => {
+  return (
+    {
+      running: "node-running",
+      success: "node-success",
+      error: "node-error",
+    }[props.data.status] || ""
+  );
+});
 function removeNode() {
   removeNodes([props.id]);
 }
@@ -85,7 +95,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .node-container {
   position: relative;
   display: inline-block;
@@ -188,5 +198,37 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 14px;
+  img {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.common-node.node-running {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, #00ff88, #00cc66, #00ff88) border-box;
+  animation: borderFlow 1.5s linear infinite;
+}
+
+@keyframes borderFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.common-node.node-success {
+  border: 2px solid #00cc66;
+  border-radius: 8px;
+}
+
+.common-node.node-error {
+  border: 2px solid #ff4d4f;
+  border-radius: 8px;
 }
 </style>

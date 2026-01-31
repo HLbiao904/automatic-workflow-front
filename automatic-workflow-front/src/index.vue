@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, markRaw, computed } from "vue";
+import { ref, onMounted, markRaw, computed, nextTick } from "vue";
 import { Background } from "@vue-flow/background";
 import { MiniMap } from "@vue-flow/minimap";
 import { useVueFlow, MarkerType, VueFlow } from "@vue-flow/core";
@@ -27,7 +27,7 @@ import { Close } from "@element-plus/icons-vue";
 import NodeSearchPanel from "./components/searchNodePanel.vue";
 import SideBar from "./components/sideBar.vue";
 import paramsDialog from "./components/paramsDialog.vue";
-const { project, addEdges, getViewport } = useVueFlow();
+const { project, addEdges, getViewport, setNodes } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(true);
 
@@ -39,6 +39,7 @@ const activeCategories = ref([]); // 展开的分类
 const showSidebar = ref(true);
 const flowWrapper = ref(null);
 const vueFlow = ref(null);
+const drawerFlash = ref(false);
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
@@ -290,6 +291,13 @@ function generateEL() {
 
     stompClient.subscribe(`/workflow/flow/${chainId}`, (msg) => {
       const data = JSON.parse(msg.body);
+      const { id, event } = data;
+      let status = "idle";
+      if (event === "NODE_START") status = "running";
+      if (event === "NODE_SUCCESS") status = "success";
+      if (event === "NODE_ERROR") status = "error";
+
+      updateNodeStatus(id, status);
       console.log("Received flow event:", data);
     });
 
@@ -306,6 +314,22 @@ function generateEL() {
     ElMessage.warning(err.message);
   }
 }
+
+function updateNodeStatus(id, status) {
+  setNodes((nodes) =>
+    nodes.map((node) =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              status,
+            },
+          }
+        : node,
+    ),
+  );
+}
 function onEdgeEnter({ edge }) {
   clearTimeout(hideTimer);
   edge.data ||= {};
@@ -318,7 +342,19 @@ function onEdgeLeave({ edge }) {
   }, 150);
 }
 function openDrawer() {
-  showNodesDialog.value = true;
+  if (!showNodesDialog.value) {
+    showNodesDialog.value = true;
+    return;
+  }
+
+  // 已经打开了 → 触发闪烁
+  drawerFlash.value = false; // 先清
+  nextTick(() => {
+    drawerFlash.value = true;
+    setTimeout(() => {
+      drawerFlash.value = false;
+    }, 600);
+  });
 }
 let hideTimer = null;
 const nodes = ref([
@@ -361,7 +397,7 @@ const edges = ref([]);
       :with-header="false"
       :modal="false"
       :modal-penetrable="true"
-      class="node-drawer"
+      :class="['nodes-drawer', { flash: drawerFlash }]"
     >
       <div class="drawer-header">
         <span>节点库</span>
@@ -405,7 +441,7 @@ const edges = ref([]);
   </div>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 /* import the necessary styles for Vue Flow to work */
 @import "@vue-flow/core/dist/style.css";
 /* import the default theme, this is optional but generally recommended */
@@ -477,8 +513,23 @@ body,
   box-shadow: 0 6px 18px rgba(64, 158, 255, 0.35);
 }
 
-.node-drawer {
+.nodes-drawer {
   pointer-events: auto;
+}
+.nodes-drawer.flash {
+  animation: drawer-flash 0.6s ease;
+}
+
+@keyframes drawer-flash {
+  0% {
+    box-shadow: inset 4px 0 0 #409eff;
+  }
+  50% {
+    box-shadow: inset 8px 0 0 #409eff;
+  }
+  100% {
+    box-shadow: inset 4px 0 0 transparent;
+  }
 }
 
 .drawer-header {

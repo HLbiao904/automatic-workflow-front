@@ -63,6 +63,7 @@ function toggle() {
   border-right: 1px solid #eee;
   //   transition: width 0.25s ease;
   flex-direction: column;
+  margin-left: 10px;
   .header {
     padding: 0;
     height: 32px;
