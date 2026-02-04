@@ -50,6 +50,7 @@ onMounted(() => {
       executions.value = res.data || [];
     });
 });
+//监听工作流切换,查询该workflow的execution列表
 watch(
   () => props.workflowId,
   (newId) => {
@@ -136,7 +137,7 @@ function formatTime(ts) {
           fit-view
         >
           <template #node-common="nodeProps">
-            <CommonNode v-bind="nodeProps" /> </template
+            <CommonNode v-bind="nodeProps" :showToolBar="false" /> </template
         ></VueFlow>
       </div>
 
@@ -237,7 +238,7 @@ function formatTime(ts) {
 }
 
 .exec-workflow {
-  flex: 1; // 🔥 吃掉剩余高度
+  flex: 1; // 吃掉剩余高度
   min-height: 300px; // 防止太小
   border: 1px solid #e4e7ed;
   border-radius: 6px;
