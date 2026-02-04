@@ -132,13 +132,26 @@ function formatTime(ts) {
           :nodes-draggable="false"
           :nodes-connectable="false"
           :edges-updatable="false"
-          :zoom-on-scroll="false"
+          :zoom-on-scroll="true"
           :pan-on-drag="true"
           fit-view
         >
           <template #node-common="nodeProps">
-            <CommonNode v-bind="nodeProps" :showToolBar="false" /> </template
-        ></VueFlow>
+            <CommonNode v-bind="nodeProps" :showToolBar="false" />
+          </template>
+          <template #node-switch="nodeProps">
+            <SwitchNode v-bind="nodeProps" :showToolBar="false" />
+          </template>
+          <template #node-boolean="nodeProps">
+            <BooleanNode v-bind="nodeProps" :showToolBar="false" />
+          </template>
+          <template #node-for="nodeProps">
+            <ForNode v-bind="nodeProps" :showToolBar="false" />
+          </template>
+          <template #node-when="nodeProps">
+            <WhenNode v-bind="nodeProps" :showToolBar="false" />
+          </template>
+        </VueFlow>
       </div>
 
       <!-- 下半区信息 -->

@@ -4,7 +4,7 @@
     @mouseleave="hover = false"
     @mouseenter="hover = true"
   >
-    <div v-show="hover" class="node-actions">
+    <div v-show="hover && showToolBar" class="node-actions">
       <button class="action-btn" @click.stop="removeNode">✕</button>
       <button class="action-btn">✎</button>
       <button class="action-btn">⎘</button>
@@ -63,6 +63,10 @@ const props = defineProps({
   position: {
     type: Object,
     required: true,
+  },
+  showToolBar: {
+    type: Boolean,
+    default: true,
   },
 });
 
