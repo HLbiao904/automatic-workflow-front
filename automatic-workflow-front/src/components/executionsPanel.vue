@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, markRaw } from "vue";
+import { ref, computed, onMounted, markRaw, onUpdated, watch } from "vue";
 import { VueFlow } from "@vue-flow/core";
 import service from "../service/index.js";
 import StartNode from "../nodes/startNode.vue";
@@ -50,7 +50,18 @@ onMounted(() => {
       executions.value = res.data || [];
     });
 });
-
+watch(
+  () => props.workflowId,
+  (newId) => {
+    service
+      .get("api/workflowExecute/list", {
+        params: { workflowId: newId },
+      })
+      .then((res) => {
+        executions.value = res.data || [];
+      });
+  },
+);
 /* ========== helpers ========== */
 function normalizeNodes(nodes) {
   return (nodes || []).map((n) => ({

@@ -42,7 +42,7 @@ import OverwriteView from "./components/overwrite.vue";
 import Chat from "./components/AiChat.vue";
 const { project, addEdges, getViewport, setNodes } = useVueFlow();
 const activeNode = ref(null);
-const showNodesDialog = ref(true);
+const showNodesDialog = ref(false);
 const edges = ref([]);
 
 const showParamsDialog = ref(false);
@@ -75,7 +75,15 @@ const edgeTypes = {
 };
 const nodeTemplates = ref([]);
 let stompClient = null;
-onMounted(() => {
+let setNodesFn = null;
+let projectFn = null;
+
+onMounted(async () => {
+  await nextTick();
+  const flow = useVueFlow({ id: "editor-flow" });
+  setNodesFn = flow.setNodes;
+  projectFn = flow.project;
+
   // 获取节点列表
   service.get("api/workflow/getNodes").then((res) => {
     const result = res.data.map((item) => {
@@ -138,7 +146,7 @@ const groupedNodes = computed(() => {
 function startDrag(template) {
   const wrapperRect = flowWrapper.value.getBoundingClientRect();
   document.onmouseup = (upEvent) => {
-    const position = project({
+    const position = projectFn({
       x: upEvent.clientX - wrapperRect.left - 45,
       y: upEvent.clientY - wrapperRect.top - 45,
     });
@@ -362,7 +370,7 @@ function stripNodeStatus(nodes) {
 }
 
 function updateNodeStatus(id, status) {
-  setNodes((nodes) =>
+  setNodesFn((nodes) =>
     nodes.map((node) =>
       node.id === id
         ? {
