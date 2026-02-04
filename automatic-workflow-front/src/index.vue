@@ -437,8 +437,9 @@ async function loadLatestVersion(workflowId) {
     return;
   }
 
-  nodes.value = JSON.parse(version.nodesJson);
   edges.value = JSON.parse(version.edgesJson);
+  const parsedNodes = JSON.parse(version.nodesJson);
+  nodes.value = parsedNodes;
 
   isDirty.value = false;
 }
@@ -601,7 +602,8 @@ function onEdgesChange(changes) {
         />
         <AiChat v-if="viewMode == 'chat'" />
         <VueFlow
-          v-if="viewMode === 'editor'"
+          id="editor-flow"
+          v-show="viewMode === 'editor'"
           ref="vueFlow"
           v-model:nodes="nodes"
           v-model:edges="edges"
@@ -623,7 +625,10 @@ function onEdgesChange(changes) {
           <Background pattern-color="#aaa" :gap="16" variant="dots" />
         </VueFlow>
 
-        <ExecutionsPanel v-else :workflowId="currentWorkflowId" />
+        <ExecutionsPanel
+          v-show="viewMode !== 'editor'"
+          :workflowId="currentWorkflowId"
+        />
       </div>
     </div>
 
