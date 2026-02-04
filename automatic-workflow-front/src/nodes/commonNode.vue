@@ -205,12 +205,17 @@ onMounted(() => {
 }
 
 .common-node.node-running {
-  border: 2px solid transparent;
+  border: 3px solid transparent;
   border-radius: 8px;
   background:
     linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(90deg, #00ff88, #00cc66, #00ff88) border-box;
-  animation: borderFlow 1.5s linear infinite;
+    linear-gradient(90deg, #00ffcc, #00ccff, #00ffcc) border-box;
+
+  background-size:
+    100% 100%,
+    300% 300%;
+
+  animation: borderFlow 1.2s linear infinite;
 }
 
 @keyframes borderFlow {
@@ -218,7 +223,7 @@ onMounted(() => {
     background-position: 0% 50%;
   }
   100% {
-    background-position: 200% 50%;
+    background-position: 300% 50%;
   }
 }
 

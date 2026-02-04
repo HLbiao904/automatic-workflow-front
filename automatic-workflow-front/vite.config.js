@@ -24,9 +24,10 @@ export default defineConfig({
     global: "window",
   },
   server: {
+    port: 51730,
     proxy: {
       "/ws": {
-        target: "http://localhost:10086",
+        target: "http://localhost:8080",
         ws: true,
         changeOrigin: true,
       },

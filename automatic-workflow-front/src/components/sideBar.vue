@@ -9,23 +9,23 @@
       </div>
     </div>
     <div class="center item">
-      <div class="menuItem">
-        <div class="menuIcon"><img src="../assets/chat.svg" /></div>
+      <div class="menuItem" @click="goOverwrite">
+        <div class="menuIcon"><img src="../assets/home.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Overwrite</div>
       </div>
       <div class="menuItem">
-        <div class="menuIcon"><img src="../assets/chat.svg" /></div>
+        <div class="menuIcon"><img src="../assets/user.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Personal</div>
       </div>
-      <div class="menuItem">
+      <div class="menuItem" @click="goChat">
         <div class="menuIcon"><img src="../assets/chat.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Chat</div>
       </div>
     </div>
     <div class="bottom item">
       <div class="menuItem">
-        <div class="menuIcon"><img src="../assets/chat.svg" /></div>
-        <div class="menuTitle" v-if="!collapsed">MenuItem1</div>
+        <div class="menuIcon"><img src="../assets/insight.svg" /></div>
+        <div class="menuTitle" v-if="!collapsed">Insights</div>
       </div>
       <div class="menuItem">
         <div class="menuIcon"><img src="../assets/chat.svg" /></div>
@@ -41,6 +41,16 @@
 
 <script setup>
 import { defineProps, defineEmits, computed } from "vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
+
+function goChat() {
+  emit("showChat");
+}
+function goOverwrite() {
+  emit("showOverwrite");
+}
 
 const props = defineProps({
   showSidebar: {
@@ -50,7 +60,7 @@ const props = defineProps({
 });
 const collapsed = computed(() => !props.showSidebar);
 
-const emit = defineEmits(["update:showSidebar"]);
+const emit = defineEmits(["update:showSidebar", "showOverwrite"]);
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
 }

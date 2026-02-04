@@ -5,7 +5,9 @@ function validateInput(nodes) {
   const startNodes = nodes.filter((n) => n.type === "start");
   if (startNodes.length !== 1) {
     ElMessage.primary(`图必须且只能有 1 个 start 节点`);
+    return false;
   }
+  return true;
 }
 
 // 校验孤立节点
@@ -17,10 +19,11 @@ function validateDangling(nodes, edges) {
     connectedIds.add(e.target);
   });
   const dangling = nodeIds.filter((id) => !connectedIds.has(id));
-  console.log("dangling", dangling);
   if (dangling.length > 0) {
     ElMessage.primary(`存在孤立节点: ${dangling.join(", ")}`);
+    return false;
   }
+  return true;
 }
 
 // 校验控制节点出边合法性
@@ -31,27 +34,37 @@ function validateControl(nodes, edges) {
     edgeMap[e.source].push(e);
   });
 
-  nodes.forEach((node) => {
+  for (const node of nodes) {
     const nodeEdges = edgeMap[node.id] || [];
+
     if (node.type === "boolean") {
       const handles = nodeEdges.map((e) => e.sourceHandle);
       if (!handles.includes("true") || !handles.includes("false")) {
         ElMessage.primary(`Boolean 节点 ${node.id} 必须有 true / false 分支`);
+        return false;
       }
     }
+
     if (node.type === "switch" && nodeEdges.length === 0) {
       ElMessage.primary(`Switch 节点 ${node.id} 必须有至少 1 个分支`);
+      return false;
     }
+
     if (node.type === "for") {
       const hasBody = nodeEdges.some((e) => e.sourceHandle === "body");
       if (!hasBody) {
         ElMessage.primary(`For 节点 ${node.id} 必须有 body 分支`);
+        return false;
       }
     }
+
     if (node.type === "when" && nodeEdges.length < 2) {
       ElMessage.primary(`WHEN 节点 ${node.id} 至少需要 2 条分支`);
+      return false;
     }
-  });
+  }
+
+  return true;
 }
 
 // 检测简单环（除了 for 回环）
@@ -66,23 +79,43 @@ function validateCycle(nodes, edges) {
   const stack = new Set();
 
   function dfs(id) {
-    if (stack.has(id)) ElMessage.primary(`检测到循环：节点 ${id}`);
-    if (visited.has(id)) return;
+    if (stack.has(id)) {
+      ElMessage.primary(`检测到循环：节点 ${id}`);
+      return false;
+    }
+
+    if (visited.has(id)) return true;
+
     visited.add(id);
     stack.add(id);
-    (graph[id] || []).forEach((nextId) => {
+
+    for (const nextId of graph[id] || []) {
       const node = nodes.find((n) => n.id === nextId);
-      if (node?.type !== "for") dfs(nextId); // for 回环允许
-    });
+      if (node?.type !== "for") {
+        if (!dfs(nextId)) return false;
+      }
+    }
+
     stack.delete(id);
+    return true;
   }
 
-  nodes.forEach((n) => dfs(n.id));
+  for (const n of nodes) {
+    if (!dfs(n.id)) return false;
+  }
+
+  return true;
 }
+
 function validateGraph(nodes, edges) {
-  validateInput(nodes);
-  validateDangling(nodes, edges);
-  validateControl(nodes, edges);
-  validateCycle(nodes, edges);
+  const inputValid = validateInput(nodes);
+  if (!inputValid) return false;
+  const danglingValid = validateDangling(nodes, edges);
+  if (!danglingValid) return false;
+  const controlValid = validateControl(nodes, edges);
+  if (!controlValid) return false;
+  const cycleValid = validateCycle(nodes, edges);
+  if (!cycleValid) return false;
+  return true;
 }
 export { validateGraph };

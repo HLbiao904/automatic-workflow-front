@@ -1,5 +1,13 @@
 <script setup>
-import { ref, onMounted, markRaw, computed, nextTick } from "vue";
+import {
+  ref,
+  onMounted,
+  markRaw,
+  computed,
+  nextTick,
+  watch,
+  watchEffect,
+} from "vue";
 import { Background } from "@vue-flow/background";
 import { MiniMap } from "@vue-flow/minimap";
 import { useVueFlow, MarkerType, VueFlow } from "@vue-flow/core";
@@ -26,10 +34,16 @@ import { Close } from "@element-plus/icons-vue";
 
 import NodeSearchPanel from "./components/searchNodePanel.vue";
 import SideBar from "./components/sideBar.vue";
+import EditorTopBar from "./components/EditorTopBar.vue";
 import paramsDialog from "./components/paramsDialog.vue";
+import ModeSwitch from "./components/modeSwitch.vue";
+import ExecutionsPanel from "./components/executionsPanel.vue";
+import OverwriteView from "./components/overwrite.vue";
+import Chat from "./components/AiChat.vue";
 const { project, addEdges, getViewport, setNodes } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(true);
+const edges = ref([]);
 
 const showParamsDialog = ref(false);
 const paramsDialogFormData = ref({});
@@ -40,6 +54,14 @@ const showSidebar = ref(true);
 const flowWrapper = ref(null);
 const vueFlow = ref(null);
 const drawerFlash = ref(false);
+const viewMode = ref("overwrite"); // 'editor' | 'executions'
+const isDirty = ref(false); // 是否有未保存更改
+const saving = ref(false);
+const workflowName = ref("未命名工作流");
+const currentWorkflowId = ref(
+  Number(localStorage.getItem("current_workflow_id")) || null,
+);
+
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
@@ -55,7 +77,7 @@ const nodeTemplates = ref([]);
 let stompClient = null;
 onMounted(() => {
   // 获取节点列表
-  service.get("flow/getNodes").then((res) => {
+  service.get("api/workflow/getNodes").then((res) => {
     const result = res.data.map((item) => {
       return {
         ...item,
@@ -136,7 +158,7 @@ function startDrag(template) {
         description: template.description,
       },
     });
-
+    isDirty.value = true;
     document.onmouseup = null;
   };
 }
@@ -205,7 +227,7 @@ function willCreateCycle(edges, source, target) {
 function onConnect(edgesParams) {
   const { source, target, sourceHandle, targetHandle } = edgesParams;
 
-  // 1️⃣ 禁止自己连自己
+  // 禁止自己连自己
   if (source === target) {
     ElMessage.warning("不能连接自己");
     return;
@@ -218,7 +240,7 @@ function onConnect(edgesParams) {
   const sh = norm(sourceHandle);
   const th = norm(targetHandle);
 
-  // 2️⃣ 只允许 out -> in
+  // 只允许 out -> in
   if (!isOut(sh) || !isIn(th)) {
     ElMessage.warning("只能从 out 连接到 in");
     return;
@@ -227,10 +249,10 @@ function onConnect(edgesParams) {
   const sourceNode = nodes.value.find((n) => n.id === source);
   if (!sourceNode) return;
 
-  // 3️⃣ when.out 允许多连
+  // when.out 允许多连
   const allowMultiSource = sourceNode.type === "when" && sh === "parallel";
 
-  // 4️⃣ handle 占用判断（关键）
+  // handle 占用判断（关键）
   const sourceHandleUsed = handleUsed(source, sh);
   const targetHandleUsed = handleUsed(target, th);
 
@@ -239,7 +261,7 @@ function onConnect(edgesParams) {
     return;
   }
 
-  // 5️⃣ 添加边
+  // 添加边
   edges.value.push({
     id: `${source}-${sh}-${target}-${th}`,
     ...edgesParams,
@@ -247,6 +269,7 @@ function onConnect(edgesParams) {
     markerEnd: MarkerType.ArrowClosed,
     //data: { label: "123" },// 线label
   });
+  isDirty.value = true;
 }
 
 function getRelateNodes() {
@@ -275,13 +298,12 @@ function generateEL() {
   }
 
   try {
-    validateGraph(nodes.value, edges.value);
-    console.log("图合法");
-  } catch (err) {
-    ElMessage.warning(err.message);
-  }
-  try {
-    validateGraph(activeNodes, edges.value);
+    const isValid = validateGraph(activeNodes, edges.value);
+    console.log(isValid);
+    if (!isValid) {
+      ElMessage.warning("流程不合法");
+      return;
+    }
     const el = compileFlow(activeNodes, edges.value);
     console.log("生成 EL:", el);
     const chainId = Date.now().toString();
@@ -302,17 +324,41 @@ function generateEL() {
     });
 
     service
-      .post("flow/execute", {
+      .post("api/workflow/execute", {
         chainId,
         el,
         relations,
       })
       .then((res) => {
-        console.log("Execute response:", res);
+        console.log("Execute response:", res.data.success);
+        const status = res.data.success ? "SUCCESS" : "ERROR";
+        // 将执行记录入库
+        service.post("api/workflowExecute/execute", {
+          userId: 1,
+          workflowId: localStorage.getItem("current_workflow_id"),
+          dirty: isDirty.value,
+          nodes: stripNodeStatus(nodes.value),
+          edges: edges.value,
+          triggerType: "MANUAL",
+          status: status,
+        });
+        isDirty.value = false;
       });
   } catch (err) {
     ElMessage.warning(err.message);
   }
+}
+// 删除nodes.data下的status属性,避免被持久化
+function stripNodeStatus(nodes) {
+  return nodes.map((n) => {
+    const data = { ...(n.data || {}) };
+    delete data.status;
+
+    return {
+      ...n,
+      data,
+    };
+  });
 }
 
 function updateNodeStatus(id, status) {
@@ -366,13 +412,142 @@ const nodes = ref([
   }, */
 ]);
 
-const edges = ref([]);
+function showOverwriteView() {
+  viewMode.value = "overwrite";
+}
+function showEditorView({ name, id }) {
+  viewMode.value = "editor";
+  workflowName.value = name;
+  currentWorkflowId.value = id;
+
+  loadLatestVersion(id);
+}
+// 获取当前工作流最新版本
+async function loadLatestVersion(workflowId) {
+  const res = await service.get(
+    `/workflow/version/${workflowId}/latest-version`,
+  );
+
+  const version = res.data;
+  // 新建工作流：没有任何版本
+  if (!version) {
+    nodes.value = [];
+    edges.value = [];
+    isDirty.value = false;
+    return;
+  }
+
+  nodes.value = JSON.parse(version.nodesJson);
+  edges.value = JSON.parse(version.edgesJson);
+
+  isDirty.value = false;
+}
+
+function showChatView() {
+  viewMode.value = "chat";
+}
+// 监听当前工作流 ID 变化，保存到 localStorage
+watch(currentWorkflowId, (id) => {
+  if (id) {
+    localStorage.setItem("current_workflow_id", id);
+  } else {
+    localStorage.removeItem("current_workflow_id");
+  }
+});
+
+async function onSave() {
+  if (saving.value || !isDirty.value) return;
+  // 只取已经连线的节点
+  const connectedNodeIds = new Set(
+    edges.value.flatMap((e) => [e.source, e.target]),
+  );
+  const activeNodes = nodes.value.filter((n) => connectedNodeIds.has(n.id));
+
+  if (activeNodes.length === 0) {
+    ElMessage.warning("无可用工作流");
+    return;
+  }
+
+  try {
+    validateGraph(activeNodes, edges.value);
+  } catch (err) {
+    ElMessage.warning(err.message);
+    return;
+  }
+  saving.value = true;
+  try {
+    await saveWorkflow();
+    isDirty.value = false;
+    ElMessage.success("保存成功");
+  } catch (e) {
+    ElMessage.error("保存失败");
+  } finally {
+    saving.value = false;
+  }
+}
+function saveWorkflow() {
+  const payload = {
+    workflowId: localStorage.getItem("current_workflow_id"),
+    nodes: stripNodeStatus(nodes.value),
+    edges: edges.value || [],
+  };
+
+  return service.post("/workflow/version/save", payload);
+}
+
+function onNodesChange(changes) {
+  // 只关心这些类型
+  if (changes.some((c) => ["add", "remove", "update"].includes(c.type))) {
+    isDirty.value = true;
+  }
+}
+
+function onEdgesChange(changes) {
+  if (changes.some((c) => ["add", "remove", "update"].includes(c.type))) {
+    isDirty.value = true;
+  }
+}
+/* const executions = ref([
+  // 示例数据
+  {
+    id: "1001",
+    status: "SUCCESS",
+    startTime: Date.now() - 60000,
+    endTime: Date.now() - 30000,
+    events: [
+      { event: "NODE_START", timestamp: Date.now() - 59000, nodeId: "1" },
+      { event: "NODE_SUCCESS", timestamp: Date.now() - 58000, nodeId: "1" },
+      { event: "NODE_START", timestamp: Date.now() - 57000, nodeId: "2" },
+      { event: "NODE_SUCCESS", timestamp: Date.now() - 56000, nodeId: "2" },
+    ],
+  },
+  {
+    id: "1002",
+    status: "RUNNING",
+    startTime: Date.now() - 120000,
+    endTime: null,
+    events: [
+      { event: "NODE_START", timestamp: Date.now() - 119000, nodeId: "1" },
+      { event: "NODE_SUCCESS", timestamp: Date.now() - 118000, nodeId: "1" },
+      { event: "NODE_START", timestamp: Date.now() - 117000, nodeId: "2" },
+    ],
+  },
+]); */
 </script>
 
 <template>
   <div class="flow-editor">
-    <SideBar v-model:showSidebar="showSidebar" />
-    <div class="nodeButtonWrapper">
+    <ModeSwitch
+      v-model:viewMode="viewMode"
+      class="modeSwitch"
+      v-if="viewMode != 'overwrite' && viewMode != 'chat'"
+    />
+    <SideBar
+      v-model:showSidebar="showSidebar"
+      @showOverwrite="showOverwriteView"
+      @showChat="showChatView"
+    />
+    <div class="nodeButtonWrapper" v-if="viewMode == 'editor'">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
         <img class="btn-img" src="./assets/addNode.svg" />
       </button>
@@ -382,6 +557,7 @@ const edges = ref([]);
     </div>
 
     <el-button
+      v-if="viewMode == 'editor'"
       class="execute-btn"
       type="success"
       size="large"
@@ -391,6 +567,7 @@ const edges = ref([]);
     </el-button>
 
     <el-drawer
+      v-if="viewMode == 'editor'"
       v-model="showNodesDialog"
       direction="rtl"
       size="25%"
@@ -409,29 +586,49 @@ const edges = ref([]);
     </el-drawer>
 
     <div class="center-panel" ref="flowWrapper">
-      <VueFlow
-        ref="vueFlow"
-        v-model:nodes="nodes"
-        v-model:edges="edges"
-        class="flow"
-        :node-types="nodeTypes"
-        :edge-types="edgeTypes"
-        @node-click="onNodeClick"
-        @connect="onConnect"
-        @edgeMouseEnter="onEdgeEnter"
-        @edgeMouseLeave="onEdgeLeave"
-      >
-        <template #node-common="nodeProps">
-          <CommonNode v-bind="nodeProps" @add-node="openDrawer" />
-        </template>
-        <Controls />
-        <MiniMap pannable zoomable />
-        <Background pattern-color="#aaa" :gap="16" variant="dots" />
-      </VueFlow>
+      <EditorTopBar
+        class="topbar"
+        v-if="viewMode != 'overwrite' && viewMode != 'chat'"
+        v-model:name="workflowName"
+        :dirty="isDirty"
+        @save="onSave"
+      />
+
+      <div class="content">
+        <OverwriteView
+          v-if="viewMode == 'overwrite'"
+          @goEditor="showEditorView"
+        />
+        <AiChat v-if="viewMode == 'chat'" />
+        <VueFlow
+          v-if="viewMode === 'editor'"
+          ref="vueFlow"
+          v-model:nodes="nodes"
+          v-model:edges="edges"
+          class="flow"
+          :node-types="nodeTypes"
+          :edge-types="edgeTypes"
+          @node-click="onNodeClick"
+          @connect="onConnect"
+          @edgeMouseEnter="onEdgeEnter"
+          @edgeMouseLeave="onEdgeLeave"
+          @nodesChange="onNodesChange"
+          @edgesChange="onEdgesChange"
+        >
+          <template #node-common="nodeProps">
+            <CommonNode v-bind="nodeProps" @add-node="openDrawer" />
+          </template>
+          <Controls />
+          <MiniMap pannable zoomable />
+          <Background pattern-color="#aaa" :gap="16" variant="dots" />
+        </VueFlow>
+
+        <ExecutionsPanel v-else :workflowId="currentWorkflowId" />
+      </div>
     </div>
 
     <ParamsDialog
-      v-if="activeNode"
+      v-if="showParamsDialog"
       ref="paramsDialogRef"
       v-model:showParamsDialog="showParamsDialog"
       :paramsDialogFormData="paramsDialogFormData"
@@ -453,17 +650,28 @@ body,
   margin: 0;
   padding: 0;
 }
+
 .flow-editor {
   display: flex;
   height: 100vh;
   width: 100%;
   position: relative;
+  overflow: hidden;
+  pointer-events: auto;
 }
-
+.topbar {
+  height: 56px;
+  flex-shrink: 0;
+}
+.content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
 .nodeButtonWrapper {
   width: 42px;
   position: absolute;
-  top: 10px;
+  top: 66px;
   right: 0;
   display: flex;
   flex-direction: column;
@@ -491,13 +699,21 @@ body,
 }
 
 .center-panel {
-  flex: 14;
-  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .flow {
-  height: 100%;
-  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+.modeSwitch {
+  position: fixed;
+  left: 50%;
+  top: 5%;
+  transform: translateX(-50%);
+  z-index: 1000;
 }
 .execute-btn {
   position: fixed;
@@ -514,6 +730,7 @@ body,
 }
 
 .nodes-drawer {
+  top: 49px !important;
   pointer-events: auto;
 }
 .nodes-drawer.flash {
