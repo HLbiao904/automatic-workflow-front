@@ -1,6 +1,6 @@
 <script setup>
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from "@vue-flow/core";
-import { computed, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useVueFlow } from "@vue-flow/core";
 const { removeEdges } = useVueFlow();
 

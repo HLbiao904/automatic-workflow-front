@@ -14,6 +14,13 @@
     >
       Executions
     </div>
+    <div
+      class="mode-item"
+      :class="{ active: viewMode === 'versions' }"
+      @click="checkVersions"
+    >
+      Versions
+    </div>
   </div>
 </template>
 
@@ -31,6 +38,9 @@ function checkEditor() {
 }
 function checkExecutions() {
   emit("update:viewMode", "executions");
+}
+function checkVersions() {
+  emit("update:viewMode", "versions");
 }
 </script>
 

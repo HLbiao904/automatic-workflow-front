@@ -40,6 +40,7 @@ import ModeSwitch from "./components/modeSwitch.vue";
 import ExecutionsPanel from "./components/executionsPanel.vue";
 import OverwriteView from "./components/overwrite.vue";
 import Chat from "./components/AiChat.vue";
+import VersionPanel from "./components/versionPanel.vue";
 const { project, addEdges, getViewport, setNodes } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
@@ -384,17 +385,23 @@ function updateNodeStatus(id, status) {
     ),
   );
 }
+const hideTimers = new Map();
+
 function onEdgeEnter({ edge }) {
-  clearTimeout(hideTimer);
+  clearTimeout(hideTimers.get(edge.id));
   edge.data ||= {};
   edge.data.hovered = true;
 }
 
 function onEdgeLeave({ edge }) {
-  hideTimer = setTimeout(() => {
+  const timer = setTimeout(() => {
     edge.data.hovered = false;
+    hideTimers.delete(edge.id);
   }, 150);
+
+  hideTimers.set(edge.id, timer);
 }
+
 function openDrawer() {
   if (!showNodesDialog.value) {
     showNodesDialog.value = true;
@@ -410,7 +417,7 @@ function openDrawer() {
     }, 600);
   });
 }
-let hideTimer = null;
+
 const nodes = ref([
   /*  {
     id: "1",
@@ -634,7 +641,11 @@ function onEdgesChange(changes) {
         </VueFlow>
 
         <ExecutionsPanel
-          v-show="viewMode !== 'editor'"
+          v-show="viewMode === 'executions'"
+          :workflowId="currentWorkflowId"
+        />
+        <VersionPanel
+          v-show="viewMode === 'versions'"
           :workflowId="currentWorkflowId"
         />
       </div>

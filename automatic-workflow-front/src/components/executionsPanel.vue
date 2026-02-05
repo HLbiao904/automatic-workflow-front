@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, markRaw, onUpdated, watch } from "vue";
 import { VueFlow } from "@vue-flow/core";
+import { Background } from "@vue-flow/background";
 import service from "../service/index.js";
 import StartNode from "../nodes/startNode.vue";
 import CommonNode from "../nodes/commonNode.vue";
@@ -151,6 +152,7 @@ function formatTime(ts) {
           <template #node-when="nodeProps">
             <WhenNode v-bind="nodeProps" :showToolBar="false" />
           </template>
+          <Background />
         </VueFlow>
       </div>
 
