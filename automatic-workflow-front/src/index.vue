@@ -294,7 +294,7 @@ function getRelateNodes() {
   });
   return relations;
 }
-function generateEL() {
+async function generateEL() {
   // 只取已经连线的节点
   const connectedNodeIds = new Set(
     edges.value.flatMap((e) => [e.source, e.target]),
@@ -331,28 +331,24 @@ function generateEL() {
       updateNodeStatus(id, status);
       console.log("Received flow event:", data);
     });
-
-    service
-      .post("api/workflow/execute", {
-        chainId,
-        el,
-        relations,
-      })
-      .then((res) => {
-        console.log("Execute response:", res.data.success);
-        const status = res.data.success ? "SUCCESS" : "ERROR";
-        // 将执行记录入库
-        service.post("api/workflowExecute/execute", {
-          userId: 1,
-          workflowId: localStorage.getItem("current_workflow_id"),
-          dirty: isDirty.value,
-          nodes: stripNodeStatus(nodes.value),
-          edges: edges.value,
-          triggerType: "MANUAL",
-          status: status,
-        });
-        isDirty.value = false;
-      });
+    // 执行工作流
+    const res = await service.post("api/workflow/execute", {
+      chainId,
+      el,
+      relations,
+    });
+    const status = res.data.success ? "SUCCESS" : "ERROR";
+    // 将执行记录入库
+    await service.post("api/workflowExecute/execute", {
+      userId: 1,
+      workflowId: localStorage.getItem("current_workflow_id"),
+      dirty: isDirty.value,
+      nodes: stripNodeStatus(nodes.value),
+      edges: edges.value,
+      triggerType: "MANUAL",
+      status: status,
+    });
+    isDirty.value = false;
   } catch (err) {
     ElMessage.warning(err.message);
   }

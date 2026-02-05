@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, markRaw } from "vue";
+import { ref, onMounted, markRaw, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
@@ -28,7 +28,19 @@ const props = defineProps({
     required: true,
   },
 });
-
+//监听工作流切换,查询该workflow的versions列表
+watch(
+  () => props.workflowId,
+  (newId) => {
+    service
+      .get("/workflow/version/list", {
+        params: { workflowId: newId },
+      })
+      .then((res) => {
+        versions.value = res.data || [];
+      });
+  },
+);
 const loading = ref(false);
 const versions = ref([]);
 
@@ -44,6 +56,7 @@ async function loadVersions() {
       params: { workflowId: props.workflowId },
     });
     versions.value = res.data || [];
+    versions.value.sort((a, b) => b.version - a.version);
   } catch (e) {
     ElMessage.error("加载版本列表失败");
   } finally {

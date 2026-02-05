@@ -1,175 +1,353 @@
 <template>
-  <div class="overwrite-page">
-    <!-- 顶部 TopBar -->
-    <header class="topbar">
-      <div class="topbar-left">
-        <span class="title">AI Workflow</span>
-      </div>
+  <div class="workflow-page">
+    <div class="blank">
+      <!-- 顶部操作栏 -->
+      <div class="header-bar">
+        <div class="header-left">
+          <h2 class="page-title">Overwrite</h2>
 
-      <div class="topbar-right">
+          <el-input
+            v-model="keyword"
+            size="small"
+            placeholder="搜索 workflow"
+            clearable
+            class="search-input"
+          />
+
+          <el-select v-model="sortBy" size="small" class="sort-select">
+            <el-option label="最近更新" value="updatedAt" />
+            <el-option label="最近创建" value="createdAt" />
+            <el-option label="名称" value="name" />
+          </el-select>
+        </div>
+
         <el-button type="primary" size="small" @click="showCreateDialog = true">
           + 创建工作流
         </el-button>
       </div>
-    </header>
 
-    <!-- 主区：已有 workflow 列表 -->
-    <main class="workflow-list-area">
-      <ul class="workflow-list">
-        <li
-          v-for="item in workflows"
+      <!-- workflow 列表 -->
+      <div class="workflow-list">
+        <div
+          v-for="item in filteredWorkflows"
           :key="item.id"
+          class="workflow-item"
           @click="goExistingWorkflow(item.name, item.id)"
         >
-          <h3>{{ item.name }}</h3>
-          <p>{{ item.description }}</p>
-        </li>
-      </ul>
-    </main>
+          <!-- 左侧信息 -->
+          <div class="workflow-left">
+            <div class="workflow-main">
+              <span class="workflow-name">{{ item.name }}</span>
+              <span class="workflow-desc">
+                {{ item.description || "暂无描述" }}
+              </span>
+            </div>
 
-    <!-- 创建工作流弹窗 -->
-    <el-dialog
-      title="创建新工作流"
-      v-model="showCreateDialog"
-      width="450px"
-      :close-on-click-modal="false"
-    >
-      <el-form :model="form" label-width="80px">
-        <el-form-item label="名称">
-          <el-input v-model="form.name" placeholder="My workflow" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input
-            type="textarea"
-            v-model="form.description"
-            placeholder="请输入工作流描述"
-            :rows="3"
-          />
-        </el-form-item>
-      </el-form>
+            <div class="workflow-meta">
+              <span>创建于：{{ formatTime(item.createdAt) }}</span>
+              <span>更新于：{{ formatTime(item.updatedAt) }}</span>
+            </div>
+          </div>
+          <!-- 右侧操作（三个点） -->
+          <el-dropdown
+            trigger="click"
+            @command="handleDropdownCommand(item, $event)"
+          >
+            <template #default>
+              <span class="more-btn" @click.stop>⋯</span>
+            </template>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="rename">修改</el-dropdown-item>
+                <el-dropdown-item command="delete" divided class="danger"
+                  >删除</el-dropdown-item
+                >
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </div>
 
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="createWorkflow">创建</el-button>
-      </span>
-    </el-dialog>
+      <!-- 修改 workflow 弹窗 -->
+      <el-dialog
+        title="修改工作流"
+        v-model="showModifyDialog"
+        width="450px"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="modifyForm" label-width="80px">
+          <el-form-item label="名称">
+            <el-input v-model="modifyForm.name" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input
+              type="textarea"
+              v-model="modifyForm.description"
+              :rows="3"
+            />
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <el-button @click="showModifyDialog = false">取消</el-button>
+          <el-button type="primary" @click="submitModify">保存</el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 创建工作流弹窗 -->
+      <el-dialog
+        title="创建新工作流"
+        v-model="showCreateDialog"
+        width="450px"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="form" label-width="80px">
+          <el-form-item label="名称">
+            <el-input v-model="form.name" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input type="textarea" v-model="form.description" :rows="3" />
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <el-button @click="showCreateDialog = false">取消</el-button>
+          <el-button type="primary" @click="createWorkflow">创建</el-button>
+        </template>
+      </el-dialog>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { ref, onMounted, computed } from "vue";
 import service from "../service/index.js";
 
-const showCreateDialog = ref(false);
 const emit = defineEmits(["goEditor"]);
+
+const workflows = ref([]);
+const showCreateDialog = ref(false);
+const keyword = ref("");
+const sortBy = ref("updatedAt");
+
 const form = ref({
   name: "My workflow",
   description: "",
 });
-
-// 模拟已有 workflow 数据
-const workflows = ref([]);
+const showModifyDialog = ref(false);
+const modifyForm = ref({
+  name: "",
+  description: "",
+});
 
 onMounted(async () => {
   const res = await service.get("/api/workflow/list", {
     params: { userId: 1 },
   });
-  workflows.value = res.data;
+  workflows.value = res.data || [];
+  console.log(workflows.value);
+});
+
+function handleDropdownCommand(item, command) {
+  if (command === "rename") {
+    modifyWorkflow(item);
+  } else if (command === "delete") {
+    deleteWorkflow(item);
+  }
+}
+
+/* ===== 列表过滤 + 排序 ===== */
+const filteredWorkflows = computed(() => {
+  let list = workflows.value.filter((w) =>
+    w.name.toLowerCase().includes(keyword.value.toLowerCase()),
+  );
+
+  return list.sort((a, b) => {
+    if (sortBy.value === "name") {
+      return a.name.localeCompare(b.name);
+    }
+    return new Date(b[sortBy.value]) - new Date(a[sortBy.value]);
+  });
 });
 
 function goExistingWorkflow(name, id) {
   emit("goEditor", { name, id });
 }
-async function createWorkflow() {
-  const name = form.value.name.trim() || "My workflow";
-  const description = form.value.description.trim();
 
+async function createWorkflow() {
+  const res = await service.post("/api/workflow/create", {
+    userId: 1,
+    name: form.value.name,
+    description: form.value.description,
+  });
+
+  workflows.value.unshift(res.data);
+  showCreateDialog.value = false;
+
+  emit("goEditor", { name: res.data.name, id: res.data.id });
+}
+function modifyWorkflow(item) {
+  modifyForm.value.name = item.name;
+  modifyForm.value.description = item.description || "";
+  showModifyDialog.value = true;
+}
+// 保存修改
+async function submitModify() {
   try {
-    // 调用后端 Spring Boot 接口
-    const res = await service.post("/api/workflow/create", {
-      name,
-      description,
-      userId: 1, // 默认 admin
+    const res = await service.post("/api/workflow/update", {
+      id: modifyForm.value.id,
+      name: modifyForm.value.name,
+      description: modifyForm.value.description,
     });
 
-    const newWorkflow = res.data; // 后端返回的 workflow 对象，带 id
-    console.log("创建成功:", newWorkflow);
+    // 更新前端列表
+    const workflow = workflows.value.find((w) => w.id === modifyForm.value.id);
+    if (workflow) {
+      workflow.name = modifyForm.value.name;
+      workflow.description = modifyForm.value.description;
+    }
 
-    // 更新前端列表（可选，保持列表同步）
-    workflows.value.push(newWorkflow);
-
-    showCreateDialog.value = false;
-
-    // 跳转到 Editor 页面
-    emit("goEditor", { name: newWorkflow.name, id: newWorkflow.id });
+    ElMessage.success("修改成功");
+    showModifyDialog.value = false;
   } catch (err) {
-    console.error("创建失败:", err);
-    ElMessage.error("创建工作流失败，请稍后重试");
+    console.error(err);
+    ElMessage.error("修改失败，请稍后重试");
   }
+}
+function deleteWorkflow(item) {
+  ElMessageBox.confirm(`确定删除工作流「${item.name}」？`, "危险操作", {
+    type: "warning",
+  })
+    .then(async () => {
+      await service.post("/api/workflow/delete", {
+        id: item.id,
+      });
+      workflows.value = workflows.value.filter((w) => w.id !== item.id);
+      ElMessage.success("已删除");
+    })
+    .catch(() => {});
+}
+function formatTime(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes(),
+  ).padStart(2, "0")}`;
 }
 </script>
 
 <style scoped lang="scss">
-.overwrite-page {
-  height: 100vh;
+.workflow-page {
+  height: 100%;
   display: flex;
-  flex-direction: column;
-  background: #f5f7fa;
+  justify-content: center;
+  padding: 16px 24px;
+  background: #f7f8fa;
 }
-
-/* 顶部 TopBar */
-.topbar {
-  height: 48px;
+.blank {
+  width: 80%;
+}
+/* 顶部栏 */
+.header-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 16px;
-  background: #fff;
-  border-bottom: 1px solid #ebeef5;
-
-  .title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #303133;
-  }
+  margin-bottom: 16px;
 }
 
-/* 主区：workflow 列表 */
-.workflow-list-area {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.workflow-list {
-  list-style: none;
-  padding: 0;
+.page-title {
   margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
 
-  li {
-    background: #fff;
-    padding: 16px 20px;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-    cursor: pointer;
+.search-input {
+  width: 200px;
+}
 
-    h3 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: #303133;
-    }
+.sort-select {
+  width: 120px;
+}
 
-    p {
-      margin: 4px 0 0 0;
-      font-size: 14px;
-      color: #606266;
-    }
+/* workflow 列表 */
+.workflow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-    &:hover {
-      background: #f5f7fa;
-    }
+.workflow-item {
+  background: #fff;
+  padding: 14px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #ebeef5;
+
+  &:hover {
+    background: #f5f7fa;
   }
+}
+
+.workflow-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workflow-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: #303133;
+}
+
+.workflow-desc {
+  font-size: 13px;
+  color: #909399;
+}
+
+.workflow-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
+  display: flex;
+  gap: 16px;
+}
+.workflow-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  padding: 14px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #ebeef5;
+
+  &:hover {
+    background: #f5f7fa;
+  }
+}
+
+.workflow-left {
+  flex: 1;
+  overflow: hidden;
+}
+
+.more-btn {
+  font-size: 20px;
+  padding: 0 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.el-dropdown-menu .danger {
+  color: #f56c6c;
 }
 </style>

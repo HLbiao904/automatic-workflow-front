@@ -7,10 +7,11 @@
         @input="$emit('update:name', $event.target.value)"
         placeholder="My workflow"
       />
-      <span v-if="dirty" class="dirty-dot">● 未保存</span>
     </div>
 
     <div class="topbar-right">
+      <span v-if="dirty" class="dirty-dot">● 未保存</span>
+      <span v-else class="saved-dot">● 已保存</span>
       <el-button
         size="small"
         type="primary"
@@ -72,10 +73,18 @@ defineProps({
 .dirty-dot {
   font-size: 12px;
   color: #e6a23c;
+  margin-right: 5px;
+}
+.saved-dot {
+  font-size: 12px;
+  color: #70dc64;
+  margin-right: 5px;
 }
 
 /* 右侧 */
 .topbar-right {
   display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>
