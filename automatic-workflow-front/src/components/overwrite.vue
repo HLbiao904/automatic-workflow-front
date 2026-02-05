@@ -136,6 +136,7 @@ const form = ref({
 });
 const showModifyDialog = ref(false);
 const modifyForm = ref({
+  id: null,
   name: "",
   description: "",
 });
@@ -187,6 +188,7 @@ async function createWorkflow() {
   emit("goEditor", { name: res.data.name, id: res.data.id });
 }
 function modifyWorkflow(item) {
+  modifyForm.value.id = item.id;
   modifyForm.value.name = item.name;
   modifyForm.value.description = item.description || "";
   showModifyDialog.value = true;
@@ -194,9 +196,10 @@ function modifyWorkflow(item) {
 // 保存修改
 async function submitModify() {
   try {
-    const res = await service.post("/api/workflow/update", {
+    console.log("modifyForm:", modifyForm.value);
+    const res = await service.post("/api/workflow/modify", {
       id: modifyForm.value.id,
-      name: modifyForm.value.name,
+      workflowName: modifyForm.value.name,
       description: modifyForm.value.description,
     });
 
@@ -219,11 +222,17 @@ function deleteWorkflow(item) {
     type: "warning",
   })
     .then(async () => {
-      await service.post("/api/workflow/delete", {
-        id: item.id,
+      const res = await service.post("/api/workflow/delete", null, {
+        params: {
+          workflowId: item.id,
+        },
       });
-      workflows.value = workflows.value.filter((w) => w.id !== item.id);
-      ElMessage.success("已删除");
+      if (res.status == 200) {
+        workflows.value = workflows.value.filter((w) => w.id !== item.id);
+        ElMessage.success("已删除");
+      } else {
+        ElMessage.success("删除失败");
+      }
     })
     .catch(() => {});
 }

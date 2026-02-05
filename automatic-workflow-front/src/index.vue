@@ -438,11 +438,18 @@ async function loadLatestVersion(workflowId) {
   const res = await service.get(
     `/workflow/version/${workflowId}/latest-version`,
   );
-
   const version = res.data;
   // 新建工作流：没有任何版本
   if (!version) {
-    nodes.value = [];
+    // 新建工作流没有版本时往画布添加开始节点
+    nodes.value = [
+      {
+        id: "1",
+        type: "start",
+        position: { x: 250, y: 5 },
+        data: { label: "开始" },
+      },
+    ];
     edges.value = [];
     isDirty.value = false;
     return;
