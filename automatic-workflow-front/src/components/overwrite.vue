@@ -75,8 +75,13 @@
         width="450px"
         :close-on-click-modal="false"
       >
-        <el-form :model="modifyForm" label-width="80px">
-          <el-form-item label="名称">
+        <el-form
+          :model="modifyForm"
+          label-width="80px"
+          :rules="modifyFormRules"
+          ref="modifyFormRef"
+        >
+          <el-form-item label="名称" prop="name">
             <el-input v-model="modifyForm.name" />
           </el-form-item>
           <el-form-item label="描述">
@@ -89,7 +94,7 @@
         </el-form>
 
         <template #footer>
-          <el-button @click="showModifyDialog = false">取消</el-button>
+          <el-button @click="cancelModify">取消</el-button>
           <el-button type="primary" @click="submitModify">保存</el-button>
         </template>
       </el-dialog>
@@ -101,8 +106,13 @@
         width="450px"
         :close-on-click-modal="false"
       >
-        <el-form :model="form" label-width="80px">
-          <el-form-item label="名称">
+        <el-form
+          ref="createFormRef"
+          :model="form"
+          :rules="createFormRules"
+          label-width="80px"
+        >
+          <el-form-item label="名称" prop="name">
             <el-input v-model="form.name" />
           </el-form-item>
           <el-form-item label="描述">
@@ -111,7 +121,7 @@
         </el-form>
 
         <template #footer>
-          <el-button @click="showCreateDialog = false">取消</el-button>
+          <el-button @click="cancelCreate">取消</el-button>
           <el-button type="primary" @click="createWorkflow">创建</el-button>
         </template>
       </el-dialog>
@@ -125,6 +135,8 @@ import service from "../service/index.js";
 
 const emit = defineEmits(["goEditor"]);
 
+const createFormRef = ref(null);
+const modifyFormRef = ref(null);
 const workflows = ref([]);
 const showCreateDialog = ref(false);
 const keyword = ref("");
@@ -134,6 +146,26 @@ const form = ref({
   name: "My workflow",
   description: "",
 });
+const createFormRules = {
+  name: [
+    {
+      type: "string",
+      required: true,
+      message: "请输入工作流名称",
+      trigger: "blur",
+    },
+  ],
+};
+const modifyFormRules = {
+  name: [
+    {
+      type: "string",
+      required: true,
+      message: "请输入工作流名称",
+      trigger: "blur",
+    },
+  ],
+};
 const showModifyDialog = ref(false);
 const modifyForm = ref({
   id: null,
@@ -174,18 +206,30 @@ const filteredWorkflows = computed(() => {
 function goExistingWorkflow(name, id) {
   emit("goEditor", { name, id });
 }
-
-async function createWorkflow() {
-  const res = await service.post("/api/workflow/create", {
-    userId: 1,
-    name: form.value.name,
-    description: form.value.description,
-  });
-
-  workflows.value.unshift(res.data);
+//取消创建工作流
+function cancelCreate() {
   showCreateDialog.value = false;
+  // 重置表单校验
+  createFormRef.value.clearValidate();
+}
+async function createWorkflow() {
+  if (!createFormRef.value) return;
 
-  emit("goEditor", { name: res.data.name, id: res.data.id });
+  createFormRef.value.validate(async (valid) => {
+    if (!valid) return;
+    const res = await service.post("/api/workflow/create", {
+      userId: 1,
+      name: form.value.name,
+      description: form.value.description,
+    });
+
+    workflows.value.unshift(res.data);
+    showCreateDialog.value = false;
+
+    emit("goEditor", { name: res.data.name, id: res.data.id });
+    // 重置表单校验
+    createFormRef.value.clearValidate();
+  });
 }
 function modifyWorkflow(item) {
   modifyForm.value.id = item.id;
@@ -193,25 +237,43 @@ function modifyWorkflow(item) {
   modifyForm.value.description = item.description || "";
   showModifyDialog.value = true;
 }
+// 取消更改工作流
+function cancelModify() {
+  showModifyDialog.value = false;
+  // 重置表单校验
+  modifyFormRef.value.clearValidate();
+}
 // 保存修改
 async function submitModify() {
+  if (!modifyFormRef.value) {
+    return;
+  }
   try {
-    console.log("modifyForm:", modifyForm.value);
-    const res = await service.post("/api/workflow/modify", {
-      id: modifyForm.value.id,
-      workflowName: modifyForm.value.name,
-      description: modifyForm.value.description,
+    modifyFormRef.value.validate(async (valid) => {
+      if (!valid) {
+        ElMessage.waring("表单不合法");
+        return;
+      }
+      const res = await service.post("/api/workflow/modify", {
+        id: modifyForm.value.id,
+        workflowName: modifyForm.value.name,
+        description: modifyForm.value.description,
+      });
+
+      // 更新前端列表
+      const workflow = workflows.value.find(
+        (w) => w.id === modifyForm.value.id,
+      );
+      if (workflow) {
+        workflow.name = modifyForm.value.name;
+        workflow.description = modifyForm.value.description;
+      }
+
+      ElMessage.success("修改成功");
+      showModifyDialog.value = false;
+      // 重置表单
+      modifyFormRef.value.resetField();
     });
-
-    // 更新前端列表
-    const workflow = workflows.value.find((w) => w.id === modifyForm.value.id);
-    if (workflow) {
-      workflow.name = modifyForm.value.name;
-      workflow.description = modifyForm.value.description;
-    }
-
-    ElMessage.success("修改成功");
-    showModifyDialog.value = false;
   } catch (err) {
     console.error(err);
     ElMessage.error("修改失败，请稍后重试");
