@@ -39,6 +39,7 @@ import paramsDialog from "./components/paramsDialog.vue";
 import ModeSwitch from "./components/modeSwitch.vue";
 import ExecutionsPanel from "./components/executionsPanel.vue";
 import OverwriteView from "./components/overwrite.vue";
+import PersonView from "./components/personPanel.vue";
 import Chat from "./components/AiChat.vue";
 import VersionPanel from "./components/versionPanel.vue";
 const { project, addEdges, getViewport, setNodes } = useVueFlow();
@@ -338,6 +339,7 @@ async function generateEL() {
       relations,
     });
     const status = res.data.success ? "SUCCESS" : "ERROR";
+    const duration = res.data.duration; // 工作流执行时间
     // 将执行记录入库
     await service.post("api/workflowExecute/execute", {
       userId: 1,
@@ -347,6 +349,7 @@ async function generateEL() {
       edges: edges.value,
       triggerType: "MANUAL",
       status: status,
+      duration: duration,
     });
     isDirty.value = false;
   } catch (err) {
@@ -465,6 +468,9 @@ async function loadLatestVersion(workflowId) {
 function showChatView() {
   viewMode.value = "chat";
 }
+function showPersonView() {
+  viewMode.value = "person";
+}
 // 监听当前工作流 ID 变化，保存到 localStorage
 watch(currentWorkflowId, (id) => {
   if (id) {
@@ -559,12 +565,15 @@ function onEdgesChange(changes) {
     <ModeSwitch
       v-model:viewMode="viewMode"
       class="modeSwitch"
-      v-if="viewMode != 'overwrite' && viewMode != 'chat'"
+      v-if="
+        viewMode != 'overwrite' && viewMode != 'chat' && viewMode != 'person'
+      "
     />
     <SideBar
       v-model:showSidebar="showSidebar"
       @showOverwrite="showOverwriteView"
       @showChat="showChatView"
+      @showPerson="showPersonView"
     />
     <div class="nodeButtonWrapper" v-if="viewMode == 'editor'">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
@@ -607,7 +616,9 @@ function onEdgesChange(changes) {
     <div class="center-panel" ref="flowWrapper">
       <EditorTopBar
         class="topbar"
-        v-if="viewMode != 'overwrite' && viewMode != 'chat'"
+        v-if="
+          viewMode != 'overwrite' && viewMode != 'chat' && viewMode != 'person'
+        "
         v-model:name="workflowName"
         :dirty="isDirty"
         @save="onSave"
@@ -617,6 +628,10 @@ function onEdgesChange(changes) {
         <OverwriteView
           v-if="viewMode == 'overwrite'"
           @goEditor="showEditorView"
+        />
+        <PersonView
+          v-if="viewMode == 'person'"
+          @goEditorFromPerson="showEditorView"
         />
         <AiChat v-if="viewMode == 'chat'" />
         <VueFlow

@@ -4,7 +4,7 @@
       <!-- 顶部操作栏 -->
       <div class="header-bar">
         <div class="header-left">
-          <h2 class="page-title">Overwrite</h2>
+          <h2 class="page-title">Person</h2>
 
           <el-input
             v-model="keyword"
@@ -133,7 +133,7 @@
 import { ref, onMounted, computed } from "vue";
 import service from "../service/index.js";
 
-const emit = defineEmits(["goEditor"]);
+const emit = defineEmits(["goEditorFromPerson"]);
 
 const createFormRef = ref(null);
 const modifyFormRef = ref(null);
@@ -143,7 +143,7 @@ const keyword = ref("");
 const sortBy = ref("updatedAt");
 
 const form = ref({
-  name: "",
+  name: "My workflow",
   description: "",
 });
 const createFormRules = {
@@ -204,7 +204,7 @@ const filteredWorkflows = computed(() => {
 });
 
 function goExistingWorkflow(name, id) {
-  emit("goEditor", { name, id });
+  emit("goEditorFromPerson", { name, id });
 }
 //取消创建工作流
 function cancelCreate() {
@@ -226,7 +226,7 @@ async function createWorkflow() {
     workflows.value.unshift(res.data);
     showCreateDialog.value = false;
 
-    emit("goEditor", { name: res.data.name, id: res.data.id });
+    emit("goEditorFromPerson", { name: res.data.name, id: res.data.id });
     // 重置表单校验
     createFormRef.value.clearValidate();
   });
@@ -272,7 +272,7 @@ async function submitModify() {
       ElMessage.success("修改成功");
       showModifyDialog.value = false;
       // 重置表单
-      modifyFormRef.value.resetField();
+      modifyFormRef.value.clearValidate();
     });
   } catch (err) {
     console.error(err);

@@ -13,7 +13,7 @@
         <div class="menuIcon"><img src="../assets/home.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Overwrite</div>
       </div>
-      <div class="menuItem">
+      <div class="menuItem" @click="goPerson">
         <div class="menuIcon"><img src="../assets/user.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Personal</div>
       </div>
@@ -51,6 +51,9 @@ function goChat() {
 function goOverwrite() {
   emit("showOverwrite");
 }
+function goPerson() {
+  emit("showPerson");
+}
 
 const props = defineProps({
   showSidebar: {
@@ -60,7 +63,7 @@ const props = defineProps({
 });
 const collapsed = computed(() => !props.showSidebar);
 
-const emit = defineEmits(["update:showSidebar", "showOverwrite"]);
+const emit = defineEmits(["update:showSidebar", "showOverwrite", "showPerson"]);
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
 }

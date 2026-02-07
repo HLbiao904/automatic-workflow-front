@@ -2,6 +2,8 @@
 import { ref, computed, onMounted, markRaw, onUpdated, watch } from "vue";
 import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
+import { Controls } from "@vue-flow/controls";
+import { MiniMap } from "@vue-flow/minimap";
 import service from "../service/index.js";
 import StartNode from "../nodes/startNode.vue";
 import CommonNode from "../nodes/commonNode.vue";
@@ -70,7 +72,7 @@ function normalizeNodes(nodes) {
     ...n,
     data: {
       ...(n.data || {}),
-      status: null, // 🔥 execution 回放不带运行态
+      status: null, // execution 回放不带运行态
     },
   }));
 }
@@ -86,6 +88,29 @@ function selectExecution(exec) {
       execNodes.value = normalizeNodes(JSON.parse(res.data.nodesJson) || []);
       execEdges.value = JSON.parse(res.data.edgesJson) || [];
     });
+}
+function formatDuration(ms) {
+  if (ms == null) return "-";
+  if (ms < 1000) return `${ms} ms`;
+  return `${(ms / 1000).toFixed(2)} s`;
+}
+function deleteExecution(exec) {
+  ElMessageBox.confirm(`确定删除 Execution #${exec.id} 吗？`, "危险操作", {
+    type: "warning",
+  })
+    .then(async () => {
+      const res = await service.delete("api/workflowExecute/delete", {
+        params: { id: exec.id },
+      });
+      if (res.status == 200) {
+        executions.value = executions.value.filter((e) => e.id !== exec.id);
+        activeId.value = null;
+        ElMessage.success("已删除");
+      } else {
+        ElMessage.success("删除失败");
+      }
+    })
+    .catch(() => {});
 }
 
 function formatTime(ts) {
@@ -124,6 +149,25 @@ function formatTime(ts) {
     <div class="exec-detail" v-if="activeExecution">
       <!-- workflow 快照（只读） -->
       <div class="exec-workflow">
+        <!-- 左上角：execution 信息 -->
+        <div class="exec-overlay exec-info-bar">
+          <span class="status" :class="activeExecution.status.toLowerCase()">
+            {{ activeExecution.status }}
+          </span>
+          <span class="time">
+            {{ formatTime(activeExecution.startTime) }}
+          </span>
+          <span class="duration">
+            ⏱ {{ formatDuration(activeExecution.duration) }}
+          </span>
+        </div>
+
+        <!-- 右上角：工具栏 -->
+        <div class="exec-overlay exec-toolbar">
+          <div class="deleteBtn" @click="deleteExecution(activeExecution)">
+            <img src="../assets/deleteExecution.svg" />
+          </div>
+        </div>
         <VueFlow
           id="execution-flow"
           :nodes="execNodes"
@@ -152,6 +196,8 @@ function formatTime(ts) {
           <template #node-when="nodeProps">
             <WhenNode v-bind="nodeProps" :showToolBar="false" />
           </template>
+          <Controls />
+          <MiniMap pannable zoomable />
           <Background />
         </VueFlow>
       </div>
@@ -253,12 +299,82 @@ function formatTime(ts) {
 }
 
 .exec-workflow {
-  flex: 1; // 吃掉剩余高度
-  min-height: 300px; // 防止太小
+  position: relative;
+  flex: 1;
+  min-height: 300px;
   border: 1px solid #e4e7ed;
   border-radius: 6px;
   background: #fafafa;
   margin-bottom: 12px;
+}
+.exec-overlay {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.exec-info-bar {
+  top: 20px;
+  left: 10px;
+
+  .status {
+    font-weight: 600;
+
+    &.success {
+      color: #67c23a;
+    }
+    &.running {
+      color: #409eff;
+    }
+    &.error {
+      color: #f56c6c;
+    }
+  }
+
+  .time {
+    color: #666;
+  }
+
+  .duration {
+    color: #333;
+  }
+}
+.exec-toolbar {
+  top: 10px;
+  right: 10px;
+  .deleteBtn {
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    img {
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+
+  &:hover {
+    background: #f5f7fa;
+  }
+
+  &.danger {
+    color: #f56c6c;
+  }
 }
 
 .detail-meta {

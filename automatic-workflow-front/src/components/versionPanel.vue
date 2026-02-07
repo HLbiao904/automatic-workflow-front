@@ -3,6 +3,8 @@ import { ref, onMounted, markRaw, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
+import { Controls } from "@vue-flow/controls";
+import { MiniMap } from "@vue-flow/minimap";
 import service from "@/service";
 import StartNode from "../nodes/startNode.vue";
 import CommonNode from "../nodes/commonNode.vue";
@@ -80,6 +82,25 @@ async function loadVersion(version) {
     ElMessage.error("加载版本内容失败");
   }
 }
+function deleteVersion(versionId) {
+  ElMessageBox.confirm(`确定删除 Version #${versionId} 吗？`, "危险操作", {
+    type: "warning",
+  }).then(async () => {
+    const res = await service.delete("/workflow/version/delete", {
+      params: { id: versionId },
+    });
+    if (res.status == 200) {
+      versions.value = versions.value.filter((v) => v.id !== versionId);
+      activeVersionId.value = null;
+      previewNodes.value = [];
+      previewEdges.value = [];
+      ElMessage.success("版本已删除");
+    } else {
+      ElMessage.success("删除失败");
+    }
+  });
+}
+
 function formatTime(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
@@ -118,9 +139,31 @@ onMounted(loadVersions);
 
     <!-- 右侧：版本预览 -->
     <div class="version-preview">
-      <div class="preview-header">版本预览</div>
-
       <div class="preview-canvas">
+        <!-- 左上：版本信息 -->
+        <div v-if="activeVersionId" class="version-overlay version-info">
+          <div class="version-date">
+            {{
+              formatTime(
+                versions.find((v) => v.id === activeVersionId)?.createdAt,
+              )
+            }}
+          </div>
+          <div class="version-meta">
+            <span class="createBy">
+              创建者:{{
+                versions.find((v) => v.id === activeVersionId)?.createdBy
+              }}
+            </span>
+          </div>
+        </div>
+
+        <!-- 右上：工具栏 -->
+        <div v-if="activeVersionId" class="version-overlay version-toolbar">
+          <div class="deleteBtn" @click="deleteVersion(activeVersionId)">
+            <img src="../assets/deleteExecution.svg" alt="" />
+          </div>
+        </div>
         <VueFlow
           :nodes="previewNodes"
           :edges="previewEdges"
@@ -148,6 +191,8 @@ onMounted(loadVersions);
           <template #node-when="nodeProps">
             <WhenNode v-bind="nodeProps" :showToolBar="false" />
           </template>
+          <Controls />
+          <MiniMap pannable zoomable />
           <Background />
         </VueFlow>
       </div>
@@ -226,18 +271,66 @@ onMounted(loadVersions);
   background: #fff;
 }
 
-.preview-header {
-  height: 40px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: #606266;
-  border-bottom: 1px solid #ebeef5;
-  background: #fafafa;
-}
-
 .preview-canvas {
+  position: relative;
   flex: 1;
+}
+/* 通用浮层 */
+.version-overlay {
+  position: absolute;
+  z-index: 10;
+  pointer-events: auto;
+  user-select: none;
+}
+.version-info {
+  top: 14px;
+  left: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+
+  .version-date {
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 6px;
+  }
+
+  .version-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: #606266;
+
+    .createBy {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(103, 194, 58, 0.15);
+      color: #67c23a;
+      font-weight: 500;
+    }
+
+    .trigger {
+      color: #909399;
+    }
+  }
+}
+.version-toolbar {
+  top: 12px;
+  right: 14px;
+  .deleteBtn {
+    border: 2px solid black;
+    padding: 5px;
+    cursor: pointer;
+    width: 22px;
+    height: 22px;
+    img {
+      width: 100%;
+      height: 100%;
+    }
+  }
 }
 </style>
