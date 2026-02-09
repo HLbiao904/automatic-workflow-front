@@ -97,6 +97,9 @@ function formatDuration(ms) {
 function deleteExecution(exec) {
   ElMessageBox.confirm(`确定删除 Execution #${exec.id} 吗？`, "危险操作", {
     type: "warning",
+    confirmButtonText: "确认删除",
+    cancelButtonText: "取消",
+    confirmButtonClass: "el-button--danger",
   })
     .then(async () => {
       const res = await service.delete("api/workflowExecute/delete", {
@@ -287,6 +290,15 @@ function formatTime(ts) {
   display: flex;
   justify-content: space-between;
   color: #999;
+  .time {
+    font-size: 12px;
+    color: #909399;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+
+    background: transparent;
+  }
 }
 
 /* 右侧详情 */
@@ -339,7 +351,13 @@ function formatTime(ts) {
   }
 
   .time {
-    color: #666;
+    font-size: 12px;
+    color: #909399;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+
+    background: transparent;
   }
 
   .duration {

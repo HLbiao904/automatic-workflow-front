@@ -59,6 +59,7 @@ async function loadVersions() {
     });
     versions.value = res.data || [];
     versions.value.sort((a, b) => b.version - a.version);
+    console.log("versions", versions);
   } catch (e) {
     ElMessage.error("加载版本列表失败");
   } finally {
@@ -85,6 +86,9 @@ async function loadVersion(version) {
 function deleteVersion(versionId) {
   ElMessageBox.confirm(`确定删除 Version #${versionId} 吗？`, "危险操作", {
     type: "warning",
+    confirmButtonText: "确认删除",
+    cancelButtonText: "取消",
+    confirmButtonClass: "el-button--danger",
   }).then(async () => {
     const res = await service.delete("/workflow/version/delete", {
       params: { id: versionId },
@@ -132,7 +136,7 @@ onMounted(loadVersions);
           <div class="version-main">
             <span class="version-tag">v{{ v.version }}</span>
           </div>
-          <div class="version-sub">{{ formatTime(v.createdAt) }}</div>
+          <div class="time">{{ formatTime(v.createdAt) }}</div>
         </div>
       </div>
     </div>
@@ -153,6 +157,11 @@ onMounted(loadVersions);
             <span class="createBy">
               创建者:{{
                 versions.find((v) => v.id === activeVersionId)?.createdBy
+              }}
+            </span>
+            <span class="createBy">
+              执行次数:{{
+                versions.find((v) => v.id === activeVersionId)?.executionCount
               }}
             </span>
           </div>
@@ -257,10 +266,15 @@ onMounted(loadVersions);
   color: #409eff;
 }
 
-.version-sub {
+.time {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 14px;
   color: #909399;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+
+  background: transparent;
 }
 
 /* 右侧预览区 */
@@ -283,41 +297,51 @@ onMounted(loadVersions);
   user-select: none;
 }
 .version-info {
-  top: 14px;
+  top: 16px;
   left: 16px;
-  padding: 10px 14px;
-  border-radius: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
 
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  /* 关键：更透明 + 毛玻璃 */
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+
+  /* 轻描边 + 阴影 */
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  user-select: none;
 
   .version-date {
     font-size: 14px;
     font-weight: 600;
     color: #303133;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    letter-spacing: 0.2px;
   }
 
   .version-meta {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     font-size: 12px;
     color: #606266;
 
     .createBy {
-      padding: 2px 6px;
-      border-radius: 4px;
-      background: rgba(103, 194, 58, 0.15);
-      color: #67c23a;
-      font-weight: 500;
-    }
+      padding: 3px 8px;
+      border-radius: 6px;
 
-    .trigger {
-      color: #909399;
+      /* 更柔和的标签 */
+      background: rgba(64, 158, 255, 0.15);
+      color: #409eff;
+      font-weight: 500;
+      white-space: nowrap;
     }
   }
 }
+
 .version-toolbar {
   top: 12px;
   right: 14px;

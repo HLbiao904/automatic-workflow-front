@@ -28,44 +28,63 @@
 
       <!-- workflow 列表 -->
       <div class="workflow-list">
-        <div
-          v-for="item in filteredWorkflows"
-          :key="item.id"
-          class="workflow-item"
-          @click="goExistingWorkflow(item.name, item.id)"
-        >
-          <!-- 左侧信息 -->
-          <div class="workflow-left">
-            <div class="workflow-main">
-              <span class="workflow-name">{{ item.name }}</span>
-              <span class="workflow-desc">
-                {{ item.description || "暂无描述" }}
-              </span>
+        <!-- 有数据 -->
+        <template v-if="filteredWorkflows.length > 0">
+          <div
+            v-for="item in filteredWorkflows"
+            :key="item.id"
+            class="workflow-item"
+            @click="goExistingWorkflow(item.name, item.id)"
+          >
+            <!-- 左侧信息 -->
+            <div class="workflow-left">
+              <div class="workflow-main">
+                <span class="workflow-name">{{ item.name }}</span>
+                <span class="workflow-desc">
+                  {{ item.description || "暂无描述" }}
+                </span>
+              </div>
+
+              <div class="workflow-meta">
+                <span>创建于：{{ formatTime(item.createdAt) }}</span>
+                <span>更新于：{{ formatTime(item.updatedAt) }}</span>
+              </div>
             </div>
 
-            <div class="workflow-meta">
-              <span>创建于：{{ formatTime(item.createdAt) }}</span>
-              <span>更新于：{{ formatTime(item.updatedAt) }}</span>
-            </div>
+            <!-- 右侧操作 -->
+            <el-dropdown
+              trigger="click"
+              @command="handleDropdownCommand(item, $event)"
+            >
+              <template #default>
+                <span class="more-btn" @click.stop>⋯</span>
+              </template>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="rename">修改</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided class="danger">
+                    删除
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
-          <!-- 右侧操作（三个点） -->
-          <el-dropdown
-            trigger="click"
-            @command="handleDropdownCommand(item, $event)"
-          >
-            <template #default>
-              <span class="more-btn" @click.stop>⋯</span>
-            </template>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="rename">修改</el-dropdown-item>
-                <el-dropdown-item command="delete" divided class="danger"
-                  >删除</el-dropdown-item
-                >
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
+        </template>
+
+        <!-- 没有数据 -->
+        <template v-else>
+          <div class="empty-state">
+            <el-empty description="暂无工作流">
+              <el-button
+                type="primary"
+                size="small"
+                @click="showCreateDialog = true"
+              >
+                创建第一个工作流
+              </el-button>
+            </el-empty>
+          </div>
+        </template>
       </div>
 
       <!-- 修改 workflow 弹窗 -->
@@ -174,8 +193,9 @@ const modifyForm = ref({
 });
 
 onMounted(async () => {
+  console.log("获取工作流列表:", localStorage.getItem("userId"));
   const res = await service.get("/api/workflow/list", {
-    params: { userId: 1 },
+    params: { userId: localStorage.getItem("userId") },
   });
   workflows.value = res.data || [];
   console.log(workflows.value);
@@ -282,6 +302,9 @@ async function submitModify() {
 function deleteWorkflow(item) {
   ElMessageBox.confirm(`确定删除工作流「${item.name}」？`, "危险操作", {
     type: "warning",
+    confirmButtonText: "确认删除",
+    cancelButtonText: "取消",
+    confirmButtonClass: "el-button--danger",
   })
     .then(async () => {
       const res = await service.post("/api/workflow/delete", null, {
@@ -346,6 +369,9 @@ function formatTime(ts) {
 
 .sort-select {
   width: 120px;
+}
+.empty-state {
+  margin-top: 80px;
 }
 
 /* workflow 列表 */
