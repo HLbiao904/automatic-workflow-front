@@ -63,20 +63,28 @@ const props = defineProps({
 });
 const collapsed = computed(() => !props.showSidebar);
 
-const emit = defineEmits(["update:showSidebar", "showOverwrite", "showPerson"]);
+const emit = defineEmits([
+  "update:showSidebar",
+  "showOverwrite",
+  "showPerson",
+  "showChat",
+]);
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
 }
 </script>
 
 <style lang="scss" scoped>
+.sideBar:not(.collapsed) {
+  padding: 0 10px; // 只有展开时有内边距
+}
 .sideBar {
   width: 220px;
   display: flex;
   border-right: 1px solid #eee;
   //   transition: width 0.25s ease;
   flex-direction: column;
-  margin-left: 10px;
+
   .header {
     padding: 0;
     height: 32px;
@@ -212,6 +220,7 @@ function toggle() {
     }
   }
 }
+
 .item {
   display: flex;
   align-items: center;
