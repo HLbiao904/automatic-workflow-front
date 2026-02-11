@@ -12,9 +12,9 @@
             <!-- AI：Markdown -->
             <div v-if="msg.role === 'assistant'">
               <!-- 流式阶段：纯文本 -->
-              <pre v-if="msg.streaming" class="stream-text">{{
-                msg.content
-              }}</pre>
+              <pre v-if="msg.streaming" class="stream-text"
+                >{{ msg.content }}
+              </pre>
 
               <!-- 完成后：Markdown -->
               <div v-else class="markdown-body" v-html="msg.html"></div>
@@ -29,17 +29,20 @@
       </div>
     </div>
 
-    <!-- 输入区 -->
-    <div class="input-bar">
-      <textarea
-        v-model="input"
-        @keydown.enter.prevent="send"
-        placeholder="输入你的问题..."
-        :disabled="loading"
-      ></textarea>
-      <button @click="send" :disabled="loading">
-        {{ loading ? "思考中…" : "发送" }}
-      </button>
+    <!-- 底部输入区（不再 fixed） -->
+    <div class="input-wrapper">
+      <div class="floating-input">
+        <textarea
+          v-model="input"
+          @keydown.enter.prevent="send"
+          placeholder="输入你的问题..."
+          :disabled="loading"
+        ></textarea>
+
+        <button @click="send" :disabled="loading">
+          {{ loading ? "思考中…" : "发送" }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -268,21 +271,24 @@ function scrollBottom() {
   background: #f9fafb;
 }
 
+/* ================= 消息区域 ================= */
+
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 20px 0;
   display: flex;
   justify-content: center;
 }
 
 .center-container {
   width: 75%;
+  max-width: 900px;
 }
 
 .message {
   display: flex;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .message.user {
@@ -311,28 +317,69 @@ function scrollBottom() {
   border: 1px solid #e5e7eb;
 }
 
-/* 输入区 */
-.input-bar {
+/* ================= 输入区域 ================= */
+
+.input-wrapper {
   display: flex;
-  padding: 12px;
-  gap: 12px;
-  background: #fff;
-  border-top: 1px solid #e5e7eb;
+  justify-content: center;
+  padding: 12px 0 24px;
+  background: transparent;
 }
 
-.input-bar textarea {
+.floating-input {
+  width: 60%;
+  max-width: 720px;
+  min-width: 400px;
+
+  display: flex;
+  align-items: center; /* ⭐ 垂直居中关键 */
+  gap: 12px;
+
+  padding: 8px 16px;
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* 输入框 */
+
+.floating-input textarea {
   flex: 1;
   resize: none;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: none;
+  outline: none;
+  background: transparent;
+
+  font-size: 14px;
+  line-height: 1.4;
+
+  height: 24px; /* ⭐ 固定高度让文字居中 */
+  padding: 0;
+  margin: 0;
+
+  overflow-y: auto;
 }
-.input-bar button {
-  padding: 0 20px;
-  border-radius: 12px;
+
+/* 发送按钮 */
+
+.floating-input button {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
   background: #3b82f6;
   color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
 }
+
+.floating-input button:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* ================= 流式文本 ================= */
+
 .stream-text {
   white-space: pre-wrap;
   word-break: break-word;
