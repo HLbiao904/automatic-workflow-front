@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, computed, onUpdated } from "vue";
 import service from "../service/index.js";
 
 const props = defineProps({
@@ -35,8 +35,12 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  isNewSession: {
+    type: Boolean,
+    default: false,
+  },
 });
-const emit = defineEmits(["session-created"]);
+const emit = defineEmits(["session-created", "title-updated"]);
 
 const messages = ref([]);
 const input = ref("");
@@ -81,58 +85,137 @@ async function send() {
   const question = input.value.trim();
   input.value = "";
 
-  // 用户消息立即显示
+  // 1️⃣ 立即显示用户消息
   messages.value.push({
-    id: Date.now() + Math.random(),
+    id: Date.now(),
     role: "user",
     content: question,
   });
+
   await nextTick();
   scrollBottom();
 
   let sid = localSessionId.value;
 
   try {
-    // 第一次聊天，创建 session
+    // 2️⃣ 第一次对话 → 创建 session
     if (!sid) {
       const res = await service.post("/chat/newSession", {
         userId: localStorage.getItem("userId"),
         title: question.slice(0, 20),
       });
+
       sid = res.data.id;
       localSessionId.value = sid;
       emit("session-created", res.data);
     }
 
-    // 占位 AI 消息
+    // 3️⃣ 占位 AI 消息
     const aiMsg = {
       id: Date.now() + Math.random(),
       role: "assistant",
-      content: "思考中...",
+      content: "",
     };
     messages.value.push(aiMsg);
+
     await nextTick();
     scrollBottom();
 
-    // 请求 AI 回复
-    const res = await service.post("/chat", {
-      memoryId: sid,
-      message: question,
+    // 4️⃣ 使用 fetch 接收 SSE 流
+    // fetch SSE
+    const response = await fetch("http://127.0.0.1:8080/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        memoryId: sid,
+        message: question,
+      }),
     });
 
-    // 根据 id 替换 AI 消息内容
-    const msg = messages.value.find((m) => m.id === aiMsg.id);
-    if (msg) msg.content = res.data;
+    if (!response.body) {
+      throw new Error("当前浏览器不支持流式响应");
+    }
 
-    await nextTick();
-    scrollBottom();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    let buffer = "";
+    let aiText = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+
+      if (value) {
+        buffer += decoder.decode(value, { stream: true });
+
+        // 统一处理 \r\n 和 \n
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop(); // 残留半行
+
+        for (const line of lines) {
+          if (line.startsWith("data:")) {
+            const data = line.slice(5).trimStart();
+
+            // SSE 规范：空 data 表示事件结束
+            if (data === "") {
+              aiText += "\n";
+            } else {
+              aiText += data;
+            }
+          }
+        }
+
+        const msg = messages.value.find((m) => m.id === aiMsg.id);
+        if (msg) msg.content = aiText;
+
+        await nextTick();
+        scrollBottom();
+      }
+
+      if (done) {
+        // ⭐ 最后再处理一次 buffer（防止吞字）
+        if (buffer.startsWith("data:")) {
+          aiText += buffer.slice(5).trimStart();
+          const msg = messages.value.find((m) => m.id === aiMsg.id);
+          if (msg) msg.content = aiText;
+        }
+        break;
+      }
+    }
+
+    // 6️⃣ 只在新会话第一次回复后生成标题
+    if (props.isNewSession) {
+      generateTitle(question);
+    }
   } catch (e) {
-    const msg = messages.value.find((m) => m.id === aiMsg.id);
-    if (msg) msg.content = "请求失败，请稍后重试";
     console.error(e);
+    const msg = messages.value.find((m) => m.role === "assistant");
+    if (msg) msg.content = "请求失败，请稍后重试";
   } finally {
     loading.value = false;
   }
+}
+
+async function generateTitle(question) {
+  // 可以让后端直接用 AI，也可以前端调 AI
+  const res = await service.post("/chat/session/generateTitle", null, {
+    params: {
+      sessionId: props.sessionId,
+      question,
+    },
+  });
+
+  console.log("标题", res.data);
+  const title = res.data;
+
+  // 通知父组件更新 UI
+  emit("title-updated", {
+    sessionId: props.sessionId,
+    title,
+  });
 }
 
 function scrollBottom() {

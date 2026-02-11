@@ -3,8 +3,8 @@
     <div class="header item">
       <div class="icon" v-if="!collapsed"></div>
       <div class="item-group header-icons" @click="toggle">
-        <img src="../assets/sidebar.svg" />
-        <img src="../assets/sidebar.svg" />
+        <img src="../assets/sideBarAdd.svg" />
+        <img src="../assets/sideBarSearch.svg" />
         <img src="../assets/sidebar.svg" />
       </div>
     </div>
@@ -165,15 +165,13 @@ function toggle() {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 4px;
+    flex-direction: row;
+    gap: 10px;
     img {
       width: 18px;
       height: 18px;
       cursor: pointer;
     }
-
-    flex-direction: row;
-    gap: 6px;
   }
 }
 .sideBar.collapsed {

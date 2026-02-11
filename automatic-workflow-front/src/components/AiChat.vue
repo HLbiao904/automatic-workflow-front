@@ -5,6 +5,8 @@
       <ChatView
         :sessionId="currentSessionId"
         @session-created="onSessionCreated"
+        @title-updated="onTitleUpdated"
+        :isNewSession="isNewSession"
       />
     </main>
 
@@ -75,6 +77,7 @@ const sessions = ref([]); // 接口来的 historySession
 const currentSessionId = ref(null);
 
 const showSearchDialog = ref(false);
+const isNewSession = ref(false)
 /* watch(
   () => props.sessionId,
   (newId) => {
@@ -108,6 +111,13 @@ async function loadSessions() {
     currentSessionId.value = sessions.value[0].id;
   }
 }
+function onTitleUpdated({ sessionId, title }) {
+  const target = sessions.value.find((s) => s.id === sessionId);
+  if (target) {
+    target.title = title;
+  }
+  isNewSession.value=false
+}
 
 onMounted(() => {
   userId = localStorage.getItem("userId");
@@ -118,7 +128,7 @@ async function createSession() {
     userId,
     title: "新对话",
   });
-
+  isNewSession.value = true
   const newSession = res.data;
   sessions.value.unshift(newSession);
   currentSessionId.value = newSession.id;

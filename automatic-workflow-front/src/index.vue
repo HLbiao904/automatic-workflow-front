@@ -345,7 +345,7 @@ async function generateEL() {
       userId: 1,
       workflowId: localStorage.getItem("current_workflow_id"),
       dirty: isDirty.value,
-      nodes: stripNodeStatus(nodes.value),
+      nodes: nodes.value,
       edges: edges.value,
       triggerType: "MANUAL",
       status: status,
