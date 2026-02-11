@@ -26,7 +26,9 @@
           <img src="../assets/newChat.svg" />
           <div class="newChat-title">新聊天</div>
         </div>
-        <img v-else src="../assets/newChat.svg" />
+        <div class="new-chat-icon" v-else>
+          <img src="../assets/newChat.svg" />
+        </div>
       </div>
 
       <!-- 搜索 -->
@@ -35,12 +37,9 @@
           <img src="../assets/searchNode.svg" />
           <div class="search-title">搜索聊天</div>
         </div>
-        <img
-          v-else
-          src="../assets/searchNode.svg"
-          class="search-icon"
-          @click="openSearchDialog"
-        />
+        <div v-else class="search-icon">
+          <img src="../assets/searchNode.svg" @click="openSearchDialog" />
+        </div>
       </div>
 
       <!-- 会话列表 -->
@@ -52,7 +51,20 @@
           :class="{ active: item.id === currentSessionId }"
           @click="switchSession(item)"
         >
-          {{ item.title }}
+          <span class="title">{{ item.title }}</span>
+
+          <!-- 三点 -->
+          <span class="more" @click.stop="toggleMenu(item.id)"
+            ><img src="../assets/more.svg"
+          /></span>
+          <div v-if="activeMenuId === item.id" class="dropdown">
+            <div class="dropdown-item" @click.stop="renameSession(item)">
+              重命名
+            </div>
+            <div class="dropdown-item delete" @click.stop="deleteSession(item)">
+              删除
+            </div>
+          </div>
         </li>
       </ul>
     </aside>
@@ -65,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
 import ChatView from "./ChatView.vue";
 import service from "../service/index.js";
 import SearchChatDialog from "../components/SearchChatDialog.vue";
@@ -77,7 +89,80 @@ const sessions = ref([]); // 接口来的 historySession
 const currentSessionId = ref(null);
 
 const showSearchDialog = ref(false);
-const isNewSession = ref(false)
+const isNewSession = ref(false);
+const activeMenuId = ref(null);
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
+function handleClickOutside() {
+  activeMenuId.value = null;
+}
+
+function toggleMenu(id) {
+  activeMenuId.value = activeMenuId.value === id ? null : id;
+}
+
+async function deleteSession(item) {
+  try {
+    await ElMessageBox.confirm(
+      "确定要删除该会话吗？删除后不可恢复。",
+      "删除确认",
+      {
+        confirmButtonText: "删除",
+        cancelButtonText: "取消",
+        type: "warning",
+        confirmButtonClass: "el-button--danger",
+      },
+    );
+
+    // 用户点击确定才会执行到这里
+    await service.delete(`/chat/session/delete/${item.id}`);
+
+    sessions.value = sessions.value.filter((s) => s.id !== item.id);
+
+    if (currentSessionId.value === item.id) {
+      currentSessionId.value = sessions.value[0]?.id || null;
+    }
+
+    ElMessage.success("删除成功");
+  } catch (err) {
+    // 用户点击取消会进入这里，不需要处理
+  }
+
+  activeMenuId.value = null;
+}
+
+async function renameSession(item) {
+  try {
+    const { value } = await ElMessageBox.prompt("重命名", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      inputValue: item.title,
+      inputPattern: /.+/,
+      inputErrorMessage: "名称不能为空",
+    });
+
+    await service.put(`/chat/session/rename/${item.id}`, null, {
+      params: {
+        title: value,
+      },
+    });
+
+    item.title = value;
+
+    ElMessage.success("重命名成功");
+  } catch (err) {
+    // 点击取消会走这里，不需要处理
+  }
+
+  activeMenuId.value = null;
+}
+
 /* watch(
   () => props.sessionId,
   (newId) => {
@@ -116,7 +201,7 @@ function onTitleUpdated({ sessionId, title }) {
   if (target) {
     target.title = title;
   }
-  isNewSession.value=false
+  isNewSession.value = false;
 }
 
 onMounted(() => {
@@ -128,7 +213,7 @@ async function createSession() {
     userId,
     title: "新对话",
   });
-  isNewSession.value = true
+  isNewSession.value = true;
   const newSession = res.data;
   sessions.value.unshift(newSession);
   currentSessionId.value = newSession.id;
@@ -207,7 +292,11 @@ function switchSession(session) {
 
 /* 会话项 */
 .chat-item {
-  padding: 10px 12px;
+  display: flex;
+  position: relative;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
@@ -226,7 +315,31 @@ function switchSession(session) {
     color: #2563eb;
     font-weight: 500;
   }
+  .title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .more {
+    opacity: 0;
+    padding: 4px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    img {
+      width: 16px;
+      height: 16px;
+    }
+  }
+  .more:hover {
+    background: #e5e7eb;
+  }
 }
+.chat-item:hover .more {
+  opacity: 1;
+}
+
 .chat-item.active {
   background: #e0edff;
   color: #2563eb;
@@ -244,7 +357,6 @@ function switchSession(session) {
 }
 .new-chat-box {
   padding: 8px;
-
   .new-chat {
     border-radius: 8px;
     padding: 6px;
@@ -260,6 +372,19 @@ function switchSession(session) {
       font-size: 16px;
     }
   }
+  .new-chat-icon {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2px;
+    border-radius: 5px;
+  }
+  .new-chat-icon:hover {
+    cursor: pointer;
+    background: #f3f4f6;
+  }
   .new-chat:hover {
     cursor: pointer;
     background: #f3f4f6;
@@ -270,7 +395,32 @@ function switchSession(session) {
   width: 25px;
   height: 25px;
 }
+/* 下拉菜单 */
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: 28px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  z-index: 100;
+  min-width: 100px;
+}
 
+.dropdown-item {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-item.delete {
+  color: #ef4444;
+}
 .search-box.collapsed img {
   width: 25px;
   height: 25px;
@@ -292,6 +442,19 @@ function switchSession(session) {
       flex: 1;
       font-size: 16px;
     }
+  }
+  .search-icon {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2px;
+    border-radius: 5px;
+  }
+  .search-icon:hover {
+    cursor: pointer;
+    background: #f3f4f6;
   }
   .search-chat:hover {
     cursor: pointer;
