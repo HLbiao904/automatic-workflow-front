@@ -21,6 +21,8 @@
     "@vue-flow/node-toolbar": "^1.1.1",
     "axios": "^1.13.2",
     "element-plus": "^2.13.1",
+    "github-markdown-css": "^5.9.0",
+    "marked": "^17.0.1",
     "pdfjs-dist": "^2.16.105",
     "pinia": "^3.0.4",
     "sockjs-client": "^1.6.1",

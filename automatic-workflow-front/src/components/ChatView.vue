@@ -1,5 +1,6 @@
 <template>
   <div class="chat-view">
+    <!-- 消息区 -->
     <div class="messages" ref="msgBox">
       <div class="center-container">
         <div
@@ -8,12 +9,27 @@
           :class="['message', msg.role]"
         >
           <div class="bubble">
-            {{ msg.content }}
+            <!-- AI：Markdown -->
+            <div v-if="msg.role === 'assistant'">
+              <!-- 流式阶段：纯文本 -->
+              <pre v-if="msg.streaming" class="stream-text">{{
+                msg.content
+              }}</pre>
+
+              <!-- 完成后：Markdown -->
+              <div v-else class="markdown-body" v-html="msg.html"></div>
+            </div>
+
+            <!-- 用户：纯文本 -->
+            <div v-else>
+              {{ msg.content }}
+            </div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- 输入区 -->
     <div class="input-bar">
       <textarea
         v-model="input"
@@ -21,14 +37,20 @@
         placeholder="输入你的问题..."
         :disabled="loading"
       ></textarea>
-      <button @click="send" :disabled="loading">发送</button>
+      <button @click="send" :disabled="loading">
+        {{ loading ? "思考中…" : "发送" }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, computed, onUpdated } from "vue";
+import { ref, watch, nextTick } from "vue";
+import { marked } from "marked";
+import "github-markdown-css/github-markdown-light.css";
 import service from "../service/index.js";
+
+/* ---------------- props / emit ---------------- */
 
 const props = defineProps({
   sessionId: {
@@ -40,7 +62,17 @@ const props = defineProps({
     default: false,
   },
 });
+
 const emit = defineEmits(["session-created", "title-updated"]);
+
+/* ---------------- markdown config ---------------- */
+
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+});
+
+/* ---------------- state ---------------- */
 
 const messages = ref([]);
 const input = ref("");
@@ -48,7 +80,8 @@ const loading = ref(false);
 const msgBox = ref(null);
 const localSessionId = ref(props.sessionId);
 
-// 当父组件切换 sessionId 时，加载历史
+/* ---------------- watch session change ---------------- */
+
 watch(
   () => props.sessionId,
   (newId) => {
@@ -60,23 +93,29 @@ watch(
   { immediate: true },
 );
 
-// 加载历史消息
+/* ---------------- history ---------------- */
+
 async function loadHistory(sessionId) {
-  if (!sessionId) return;
   try {
     const res = await service.get("/chat/messageHistory/list", {
       params: { sessionId },
     });
+
     messages.value = (res.data || []).map((m, idx) => ({
-      ...m,
       id: Date.now() + idx,
+      role: m.role,
+      content: m.content,
+      html: m.role === "assistant" ? marked.parse(m.content || "") : "",
     }));
+
     await nextTick();
     scrollBottom();
   } catch (e) {
-    console.error("加载历史消息失败", e);
+    console.error("加载历史失败", e);
   }
 }
+
+/* ---------------- send message ---------------- */
 
 async function send() {
   if (!input.value.trim() || loading.value) return;
@@ -85,7 +124,7 @@ async function send() {
   const question = input.value.trim();
   input.value = "";
 
-  // 1️⃣ 立即显示用户消息
+  // 1️⃣ 用户消息
   messages.value.push({
     id: Date.now(),
     role: "user",
@@ -98,7 +137,7 @@ async function send() {
   let sid = localSessionId.value;
 
   try {
-    // 2️⃣ 第一次对话 → 创建 session
+    // 2️⃣ 创建 session
     if (!sid) {
       const res = await service.post("/chat/newSession", {
         userId: localStorage.getItem("userId"),
@@ -110,19 +149,20 @@ async function send() {
       emit("session-created", res.data);
     }
 
-    // 3️⃣ 占位 AI 消息
+    // 3️⃣ AI 占位
     const aiMsg = {
       id: Date.now() + Math.random(),
       role: "assistant",
       content: "",
+      html: "",
+      streaming: true, // 新增
     };
     messages.value.push(aiMsg);
 
     await nextTick();
     scrollBottom();
 
-    // 4️⃣ 使用 fetch 接收 SSE 流
-    // fetch SSE
+    // 4️⃣ SSE 请求
     const response = await fetch("http://127.0.0.1:8080/chat", {
       method: "POST",
       headers: {
@@ -136,14 +176,14 @@ async function send() {
     });
 
     if (!response.body) {
-      throw new Error("当前浏览器不支持流式响应");
+      throw new Error("浏览器不支持流式响应");
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
 
     let buffer = "";
-    let aiText = "";
+    let markdownText = "";
 
     while (true) {
       const { value, done } = await reader.read();
@@ -151,72 +191,66 @@ async function send() {
       if (value) {
         buffer += decoder.decode(value, { stream: true });
 
-        // 统一处理 \r\n 和 \n
         const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop(); // 残留半行
+        buffer = lines.pop();
 
         for (const line of lines) {
           if (line.startsWith("data:")) {
-            const data = line.slice(5).trimStart();
-
-            // SSE 规范：空 data 表示事件结束
-            if (data === "") {
-              aiText += "\n";
-            } else {
-              aiText += data;
-            }
+            const data = line.slice(5);
+            markdownText += data === "" ? "\n" : data;
           }
         }
 
-        const msg = messages.value.find((m) => m.id === aiMsg.id);
-        if (msg) msg.content = aiText;
+        // 只更新纯文本 → 真流式
+        // 用响应式对象更新
+        const lastMsg = messages.value[messages.value.length - 1];
+        lastMsg.content = markdownText;
 
         await nextTick();
         scrollBottom();
       }
 
       if (done) {
-        // ⭐ 最后再处理一次 buffer（防止吞字）
-        if (buffer.startsWith("data:")) {
-          aiText += buffer.slice(5).trimStart();
-          const msg = messages.value.find((m) => m.id === aiMsg.id);
-          if (msg) msg.content = aiText;
-        }
+        // 结束后一次性转 markdown
+        aiMsg.streaming = false;
+        aiMsg.html = marked.parse(markdownText);
         break;
       }
     }
 
-    // 6️⃣ 只在新会话第一次回复后生成标题
+    // 6️⃣ 新会话生成标题
     if (props.isNewSession) {
       generateTitle(question);
     }
   } catch (e) {
     console.error(e);
     const msg = messages.value.find((m) => m.role === "assistant");
-    if (msg) msg.content = "请求失败，请稍后重试";
+    if (msg) {
+      msg.content = "请求失败，请稍后重试";
+      msg.html = "<p>请求失败，请稍后重试</p>";
+    }
   } finally {
     loading.value = false;
   }
 }
 
+/* ---------------- title ---------------- */
+
 async function generateTitle(question) {
-  // 可以让后端直接用 AI，也可以前端调 AI
   const res = await service.post("/chat/session/generateTitle", null, {
     params: {
-      sessionId: props.sessionId,
+      sessionId: localSessionId.value,
       question,
     },
   });
 
-  console.log("标题", res.data);
-  const title = res.data;
-
-  // 通知父组件更新 UI
   emit("title-updated", {
-    sessionId: props.sessionId,
-    title,
+    sessionId: localSessionId.value,
+    title: res.data,
   });
 }
+
+/* ---------------- scroll ---------------- */
 
 function scrollBottom() {
   if (msgBox.value) {
@@ -239,15 +273,16 @@ function scrollBottom() {
   overflow-y: auto;
   padding: 16px;
   display: flex;
-  justify-content: start;
-  align-items: center;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: center;
+}
+
+.center-container {
+  width: 75%;
 }
 
 .message {
-  width: 100%;
   display: flex;
+  margin-bottom: 12px;
 }
 
 .message.user {
@@ -257,14 +292,12 @@ function scrollBottom() {
 .message.assistant {
   justify-content: flex-start;
 }
-.center-container {
-  width: 75%;
-}
+
 .bubble {
-  margin-bottom: 15px;
-  padding: 10px 16px;
+  max-width: 100%;
+  padding: 12px 16px;
   border-radius: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-word;
 }
 
@@ -275,19 +308,16 @@ function scrollBottom() {
 
 .assistant .bubble {
   background: #fff;
-  color: #111;
   border: 1px solid #e5e7eb;
 }
 
-/* GPT 风格输入框 */
+/* 输入区 */
 .input-bar {
   display: flex;
-  padding: 12px 16px;
+  padding: 12px;
   gap: 12px;
   background: #fff;
   border-top: 1px solid #e5e7eb;
-  border-radius: 16px;
-  margin: 0 16px 16px 16px;
 }
 
 .input-bar textarea {
@@ -296,16 +326,18 @@ function scrollBottom() {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
-  outline: none;
-  min-height: 48px;
-  max-height: 120px;
 }
-
 .input-bar button {
   padding: 0 20px;
   border-radius: 12px;
   background: #3b82f6;
   color: #fff;
-  font-weight: 500;
+}
+.stream-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
 }
 </style>
