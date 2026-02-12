@@ -1,5 +1,11 @@
 <template>
   <div class="workflow-page">
+    <div
+      class="delete-batch"
+      v-if="selectedExecutionsIds.length && currentPan == 'executions'"
+    >
+      <el-button type="danger" @click="deleteBatch">批量删除</el-button>
+    </div>
     <div class="blank">
       <!-- 顶部标题栏 -->
       <div class="header-bar">
@@ -87,7 +93,13 @@
 
             <!-- 筛选弹层 -->
             <div v-if="showFilter" ref="panelRef" class="filter-panel">
-              <el-form :model="filterForm" label-width="90px" size="small">
+              <el-form
+                :model="filterForm"
+                :rules="filterRules"
+                label-width="90px"
+                size="small"
+                ref="filterFormRef"
+              >
                 <el-form-item label="工作流">
                   <el-select
                     v-model="filterForm.workflowName"
@@ -124,20 +136,12 @@
                   />
                 </el-form-item>
 
-                <el-form-item label="运行时间(ms)">
-                  <div class="duration-range">
-                    <el-input
-                      v-model="filterForm.minDuration"
-                      placeholder="最小"
-                      type="number"
-                    />
-                    <span>~</span>
-                    <el-input
-                      v-model="filterForm.maxDuration"
-                      placeholder="最大"
-                      type="number"
-                    />
-                  </div>
+                <el-form-item label="最小运行时间(ms)" prop="durationMin">
+                  <el-input v-model="filterForm.durationMin" type="number" />
+                </el-form-item>
+
+                <el-form-item label="最大运行时间(ms)" prop="durationMax">
+                  <el-input v-model="filterForm.durationMax" type="number" />
                 </el-form-item>
 
                 <div class="filter-actions">
@@ -271,7 +275,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from "vue";
+import { ElMessage } from "element-plus";
+import { ref, onMounted, onBeforeUnmount, computed, toRaw } from "vue";
 import service from "../service/index.js";
 
 const emit = defineEmits(["goEditorFromPerson"]);
@@ -284,10 +289,12 @@ const showCreateDialog = ref(false);
 const keyword = ref("");
 const sortBy = ref("updatedAt");
 const activeTab = ref("workflows");
-const selectedExecutions = ref([]);
+const selectedExecutionsIds = ref([]);
 const showFilter = ref(false);
 const buttonRef = ref(null);
 const panelRef = ref(null);
+const filterFormRef = ref(null);
+const currentPan = ref("");
 
 const filterForm = ref({
   workflowName: "",
@@ -365,6 +372,27 @@ function toggleFilter() {
   showFilter.value = !showFilter.value;
 }
 
+const validateDuration = (rule, value, callback) => {
+  const min = filterForm.value.durationMin;
+  const max = filterForm.value.durationMax;
+
+  // 只要有一个为空就不校验
+  if (!min || !max) {
+    return callback();
+  }
+
+  // 转成数字比较
+  if (Number(max) < Number(min)) {
+    callback(new Error("最大运行时间必须大于或等于最小运行时间"));
+  } else {
+    callback();
+  }
+};
+const filterRules = {
+  durationMin: [{ validator: validateDuration, trigger: "blur" }],
+  durationMax: [{ validator: validateDuration, trigger: "blur" }],
+};
+
 async function resetFilter() {
   filterForm.value = {
     userId: localStorage.getItem("userId"),
@@ -384,9 +412,19 @@ async function resetFilter() {
   executions.value = res.data;
 }
 
-function applyFilter() {
-  fetchFilterExecutions();
+async function applyFilter() {
+  if (!filterFormRef.value) return;
+
+  try {
+    await filterFormRef.value.validate();
+    // 校验通过
+    fetchFilterExecutions();
+  } catch (err) {
+    // 校验失败
+    ElMessage.error("校验未通过");
+  }
 }
+
 async function fetchFilterExecutions() {
   const params = buildQueryParams();
   const res = await service.post("/api/workflowExecute/listExecutions", params);
@@ -467,7 +505,30 @@ function handleExecutionCommand(row, command) {
 
 function handleSelectionChange(val) {
   // TODO 调用批量删除接口
-  selectedExecutions.value = val;
+  selectedExecutionsIds.value = val.map((item) => item.id);
+}
+async function deleteBatch() {
+  ElMessageBox.confirm("确定要删除这些执行记录吗？", "危险操作", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    confirmButtonClass: "el-button--danger",
+    type: "warning",
+  })
+    .then(async () => {
+      // 点击确定后执行
+      await service.put(
+        "/api/workflowExecute/deleteBatch",
+        toRaw(selectedExecutionsIds.value),
+      );
+
+      ElMessage.success("删除成功");
+      // 调接口重新渲染
+      const res = await service.post("/api/workflowExecute/listExecutions", {
+        userId: localStorage.getItem("userId"),
+      });
+      executions.value = res.data;
+    })
+    .catch(() => {});
 }
 function handleDropdownCommand(item, command) {
   if (command === "rename") {
@@ -598,6 +659,7 @@ async function loadExecutions() {
 }
 
 function handleTabClick(tab) {
+  currentPan.value = tab.props.name;
   if (tab.props.name === "executions") {
     loadExecutions();
   }
@@ -620,6 +682,15 @@ function formatTime(ts) {
   justify-content: center;
   padding: 16px 24px;
   background: #f7f8fa;
+  position: relative;
+  .delete-batch {
+    width: 60px;
+    height: 30px;
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 .blank {
   width: 80%;

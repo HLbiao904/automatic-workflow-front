@@ -1,7 +1,9 @@
 <template>
   <aside :class="['sideBar', { collapsed }]">
     <div class="header item">
-      <div class="icon" v-if="!collapsed"></div>
+      <div class="logo" v-if="!collapsed">
+        <img src="../assets/logo.png" />
+      </div>
       <div class="item-group header-icons" @click="toggle">
         <img src="../assets/sideBarAdd.svg" />
         <img src="../assets/sideBarSearch.svg" />
@@ -89,10 +91,14 @@ function toggle() {
     padding: 0;
     height: 32px;
     margin-top: 10px;
-    .icon {
+    .logo {
       height: 100%;
       width: 50%;
       background-color: antiquewhite;
+      img {
+        width: 100%;
+        height: 100%;
+      }
     }
   }
   .center {
