@@ -149,6 +149,7 @@
 </template>
 
 <script setup>
+import { ElMessage } from "element-plus";
 import { ref, onMounted, computed } from "vue";
 import service from "../service/index.js";
 
@@ -245,7 +246,7 @@ async function createWorkflow() {
 
     workflows.value.unshift(res.data);
     showCreateDialog.value = false;
-
+    ElMessage.success("创建成功");
     emit("goEditor", { name: res.data.name, id: res.data.id });
     // 重置表单校验
     createFormRef.value.clearValidate();

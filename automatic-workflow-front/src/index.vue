@@ -653,6 +653,9 @@ function onEdgesChange(changes) {
           <template #node-common="nodeProps">
             <CommonNode v-bind="nodeProps" @add-node="openDrawer" />
           </template>
+          <template #node-start="nodeProps">
+            <StartNode v-bind="nodeProps" @add-node="openDrawer" />
+          </template>
           <Controls />
           <MiniMap pannable zoomable />
           <Background pattern-color="#aaa" :gap="16" variant="dots" />

@@ -1,104 +1,146 @@
 <template>
   <div class="workflow-page">
     <div class="blank">
-      <!-- 顶部操作栏 -->
+      <!-- 顶部标题栏 -->
       <div class="header-bar">
-        <div class="header-left">
-          <h2 class="page-title">Person</h2>
-
-          <el-input
-            v-model="keyword"
-            size="small"
-            placeholder="搜索 workflow"
-            clearable
-            class="search-input"
-          />
-
-          <el-select v-model="sortBy" size="small" class="sort-select">
-            <el-option label="最近更新" value="updatedAt" />
-            <el-option label="最近创建" value="createdAt" />
-            <el-option label="名称" value="name" />
-          </el-select>
-        </div>
+        <h2 class="page-title">Personal</h2>
 
         <el-button type="primary" size="small" @click="showCreateDialog = true">
           + 创建工作流
         </el-button>
       </div>
 
-      <!-- workflow 列表 -->
-      <div class="workflow-list">
-        <div
-          v-for="item in filteredWorkflows"
-          :key="item.id"
-          class="workflow-item"
-          @click="goExistingWorkflow(item.name, item.id)"
-        >
-          <!-- 左侧信息 -->
-          <div class="workflow-left">
-            <div class="workflow-main">
-              <span class="workflow-name">{{ item.name }}</span>
-              <span class="workflow-desc">
-                {{ item.description || "暂无描述" }}
-              </span>
-            </div>
+      <!-- Tabs 区域 -->
+      <el-tabs
+        v-model="activeTab"
+        class="workflow-tabs"
+        @tab-click="handleTabClick"
+      >
+        <!-- ============ Workflows ============ -->
+        <el-tab-pane label="Workflows" name="workflows">
+          <!-- 搜索 + 排序（只在 workflows 中） -->
+          <div class="toolbar">
+            <el-input
+              v-model="keyword"
+              size="small"
+              placeholder="搜索 workflow"
+              clearable
+              class="search-input"
+            />
 
-            <div class="workflow-meta">
-              <span>创建于：{{ formatTime(item.createdAt) }}</span>
-              <span>更新于：{{ formatTime(item.updatedAt) }}</span>
+            <el-select v-model="sortBy" size="small" class="sort-select">
+              <el-option label="最近更新" value="updatedAt" />
+              <el-option label="最近创建" value="createdAt" />
+              <el-option label="名称" value="name" />
+            </el-select>
+          </div>
+
+          <!-- workflow 列表 -->
+          <div class="workflow-list">
+            <div
+              v-for="item in filteredWorkflows"
+              :key="item.id"
+              class="workflow-item"
+              @click="goExistingWorkflow(item.name, item.id)"
+            >
+              <div class="workflow-left">
+                <div class="workflow-main">
+                  <span class="workflow-name">{{ item.name }}</span>
+                  <span class="workflow-desc">
+                    {{ item.description || "暂无描述" }}
+                  </span>
+                </div>
+
+                <div class="workflow-meta">
+                  <span>创建于：{{ formatTime(item.createdAt) }}</span>
+                  <span>更新于：{{ formatTime(item.updatedAt) }}</span>
+                </div>
+              </div>
+
+              <!-- 三个点 -->
+              <el-dropdown
+                trigger="click"
+                @command="handleDropdownCommand(item, $event)"
+              >
+                <template #default>
+                  <span class="more-btn" @click.stop>⋯</span>
+                </template>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="rename"> 修改 </el-dropdown-item>
+                    <el-dropdown-item command="delete" divided class="danger">
+                      删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </div>
-          <!-- 右侧操作（三个点） -->
-          <el-dropdown
-            trigger="click"
-            @command="handleDropdownCommand(item, $event)"
+        </el-tab-pane>
+
+        <!-- ============ Executions ============ -->
+        <el-tab-pane label="Executions" name="executions">
+          <el-table
+            :data="executions"
+            style="width: 100%"
+            max-height="600"
+            @selection-change="handleSelectionChange"
+            size="default"
+            stripe
           >
-            <template #default>
-              <span class="more-btn" @click.stop>⋯</span>
-            </template>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="rename">修改</el-dropdown-item>
-                <el-dropdown-item command="delete" divided class="danger"
-                  >删除</el-dropdown-item
+            <!-- 勾选框 -->
+            <el-table-column type="selection" width="50" />
+
+            <!-- 工作流名称 -->
+            <el-table-column prop="workflowName" label="工作流" />
+
+            <!-- 状态 -->
+            <el-table-column label="状态">
+              <template #default="scope">
+                <el-tag :type="getStatusType(scope.row.status)" size="small">
+                  {{ scope.row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+
+            <!-- 开始时间 -->
+            <el-table-column label="开始时间">
+              <template #default="scope">
+                {{ formatTime(scope.row.startTime) }}
+              </template>
+            </el-table-column>
+
+            <!-- 运行时间 -->
+            <el-table-column label="运行时间">
+              <template #default="scope">
+                {{ formatDuration(scope.row.duration) }}
+              </template>
+            </el-table-column>
+
+            <!-- 执行ID -->
+            <el-table-column prop="id" label="执行ID" />
+
+            <!-- 右侧操作 -->
+            <el-table-column width="80" align="right">
+              <template #default="scope">
+                <el-dropdown
+                  trigger="click"
+                  @command="handleExecutionCommand(scope.row, $event)"
                 >
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </div>
-
-      <!-- 修改 workflow 弹窗 -->
-      <el-dialog
-        title="修改工作流"
-        v-model="showModifyDialog"
-        width="450px"
-        :close-on-click-modal="false"
-      >
-        <el-form
-          :model="modifyForm"
-          label-width="80px"
-          :rules="modifyFormRules"
-          ref="modifyFormRef"
-        >
-          <el-form-item label="名称" prop="name">
-            <el-input v-model="modifyForm.name" />
-          </el-form-item>
-          <el-form-item label="描述">
-            <el-input
-              type="textarea"
-              v-model="modifyForm.description"
-              :rows="3"
-            />
-          </el-form-item>
-        </el-form>
-
-        <template #footer>
-          <el-button @click="cancelModify">取消</el-button>
-          <el-button type="primary" @click="submitModify">保存</el-button>
-        </template>
-      </el-dialog>
-
+                  <span class="more-btn" @click.stop>⋯</span>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="delete" class="danger">
+                        删除
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
       <!-- 创建工作流弹窗 -->
       <el-dialog
         title="创建新工作流"
@@ -125,6 +167,35 @@
           <el-button type="primary" @click="createWorkflow">创建</el-button>
         </template>
       </el-dialog>
+      <!-- 修改 workflow 弹窗 -->
+      <el-dialog
+        title="修改工作流"
+        v-model="showModifyDialog"
+        width="450px"
+        :close-on-click-modal="false"
+      >
+        <el-form
+          :model="modifyForm"
+          label-width="80px"
+          :rules="modifyFormRules"
+          ref="modifyFormRef"
+        >
+          <el-form-item label="名称" prop="name">
+            <el-input v-model="modifyForm.name" />
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input
+              type="textarea"
+              v-model="modifyForm.description"
+              :rows="3"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="cancelModify">取消</el-button>
+          <el-button type="primary" @click="submitModify">保存</el-button>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -135,12 +206,15 @@ import service from "../service/index.js";
 
 const emit = defineEmits(["goEditorFromPerson"]);
 
+const executions = ref([]);
 const createFormRef = ref(null);
 const modifyFormRef = ref(null);
 const workflows = ref([]);
 const showCreateDialog = ref(false);
 const keyword = ref("");
 const sortBy = ref("updatedAt");
+const activeTab = ref("workflows");
+const selectedExecutions = ref([]);
 
 const form = ref({
   name: "My workflow",
@@ -175,12 +249,65 @@ const modifyForm = ref({
 
 onMounted(async () => {
   const res = await service.get("/api/workflow/list", {
-    params: { userId: 1 },
+    params: { userId: localStorage.getItem("userId") },
   });
   workflows.value = res.data || [];
   console.log(workflows.value);
 });
 
+function getStatusType(status) {
+  switch (status) {
+    case "SUCCESS":
+      return "success";
+    case "ERROR":
+      return "danger";
+    case "RUNNING":
+      return "running";
+    default:
+      return "";
+  }
+}
+function formatDuration(ms) {
+  if (ms == null) return "-";
+
+  if (ms < 1000) {
+    return ms + " ms";
+  }
+
+  if (ms < 60000) {
+    return (ms / 1000).toFixed(2) + " s";
+  }
+
+  const minutes = Math.floor(ms / 60000);
+  const seconds = ((ms % 60000) / 1000).toFixed(1);
+
+  return `${minutes} min ${seconds} s`;
+}
+
+function handleExecutionCommand(row, command) {
+  if (command === "delete") {
+    ElMessageBox.confirm(`确定删除执行记录 ${row.id}？`, "危险操作", {
+      type: "warning",
+    })
+      .then(async () => {
+        const res = await service.delete("api/workflowExecute/delete", {
+          params: { id: row.id },
+        });
+        if (res.status == 200) {
+          executions.value = executions.value.filter((e) => e.id !== row.id);
+          ElMessage.success("已删除");
+        } else {
+          ElMessage.success("删除失败");
+        }
+      })
+      .catch(() => {});
+  }
+}
+
+function handleSelectionChange(val) {
+  // TODO 调用批量删除接口
+  selectedExecutions.value = val;
+}
 function handleDropdownCommand(item, command) {
   if (command === "rename") {
     modifyWorkflow(item);
@@ -218,14 +345,14 @@ async function createWorkflow() {
   createFormRef.value.validate(async (valid) => {
     if (!valid) return;
     const res = await service.post("/api/workflow/create", {
-      userId: 1,
+      userId: localStorage.getItem("userId"),
       name: form.value.name,
       description: form.value.description,
     });
 
     workflows.value.unshift(res.data);
     showCreateDialog.value = false;
-
+    ElMessage.success("创建成功");
     emit("goEditorFromPerson", { name: res.data.name, id: res.data.id });
     // 重置表单校验
     createFormRef.value.clearValidate();
@@ -297,6 +424,22 @@ function deleteWorkflow(item) {
       }
     })
     .catch(() => {});
+}
+
+async function loadExecutions() {
+  const res = await service.post("/api/workflowExecute/listExecutions", {
+    userId: localStorage.getItem("userId"),
+    pageNum: 1,
+    pageSize: 10,
+  });
+
+  executions.value = res.data;
+}
+
+function handleTabClick(tab) {
+  if (tab.props.name === "executions") {
+    loadExecutions();
+  }
 }
 function formatTime(ts) {
   if (!ts) return "-";
@@ -371,6 +514,21 @@ function formatTime(ts) {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.workflow-tabs {
+  margin-top: 10px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.empty-box {
+  padding: 40px 0;
+  text-align: center;
+  color: #909399;
 }
 
 .workflow-name {

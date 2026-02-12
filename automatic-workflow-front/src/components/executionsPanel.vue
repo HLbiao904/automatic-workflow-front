@@ -62,6 +62,7 @@ watch(
         params: { workflowId: newId },
       })
       .then((res) => {
+        console.log("executions:", res.data);
         executions.value = res.data || [];
       });
   },
