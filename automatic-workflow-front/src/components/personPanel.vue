@@ -80,10 +80,80 @@
 
         <!-- ============ Executions ============ -->
         <el-tab-pane label="Executions" name="executions">
+          <div class="filter-wrapper">
+            <span class="filter" ref="buttonRef" @click="toggleFilter">
+              <img src="../assets/filter.svg" />
+            </span>
+
+            <!-- 筛选弹层 -->
+            <div v-if="showFilter" ref="panelRef" class="filter-panel">
+              <el-form :model="filterForm" label-width="90px" size="small">
+                <el-form-item label="工作流">
+                  <el-select
+                    v-model="filterForm.workflowName"
+                    clearable
+                    placeholder="请选择工作流"
+                    filterable
+                  >
+                    <el-option
+                      v-for="wf in workflows"
+                      :key="wf.id"
+                      :label="wf.name"
+                      :value="wf.name"
+                    />
+                  </el-select>
+                </el-form-item>
+
+                <el-form-item label="状态">
+                  <el-select v-model="filterForm.status" clearable>
+                    <el-option label="RUNNING" value="RUNNING" />
+                    <el-option label="SUCCESS" value="SUCCESS" />
+                    <el-option label="ERROR" value="ERROR" />
+                    <el-option label="CANCELLED" value="CANCELLED" />
+                  </el-select>
+                </el-form-item>
+
+                <el-form-item label="开始时间">
+                  <el-date-picker
+                    v-model="filterForm.startTimeRange"
+                    type="datetimerange"
+                    range-separator="至"
+                    start-placeholder="开始时间"
+                    end-placeholder="结束时间"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                  />
+                </el-form-item>
+
+                <el-form-item label="运行时间(ms)">
+                  <div class="duration-range">
+                    <el-input
+                      v-model="filterForm.minDuration"
+                      placeholder="最小"
+                      type="number"
+                    />
+                    <span>~</span>
+                    <el-input
+                      v-model="filterForm.maxDuration"
+                      placeholder="最大"
+                      type="number"
+                    />
+                  </div>
+                </el-form-item>
+
+                <div class="filter-actions">
+                  <el-button size="small" @click="resetFilter">重置</el-button>
+                  <el-button type="primary" size="small" @click="applyFilter">
+                    搜索
+                  </el-button>
+                </div>
+              </el-form>
+            </div>
+          </div>
+
           <el-table
             :data="executions"
             style="width: 100%"
-            max-height="600"
+            height="600"
             @selection-change="handleSelectionChange"
             size="default"
             stripe
@@ -92,7 +162,7 @@
             <el-table-column type="selection" width="50" />
 
             <!-- 工作流名称 -->
-            <el-table-column prop="workflowName" label="工作流" />
+            <el-table-column prop="workflowName" label="所属工作流" />
 
             <!-- 状态 -->
             <el-table-column label="状态">
@@ -201,7 +271,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 import service from "../service/index.js";
 
 const emit = defineEmits(["goEditorFromPerson"]);
@@ -215,6 +285,17 @@ const keyword = ref("");
 const sortBy = ref("updatedAt");
 const activeTab = ref("workflows");
 const selectedExecutions = ref([]);
+const showFilter = ref(false);
+const buttonRef = ref(null);
+const panelRef = ref(null);
+
+const filterForm = ref({
+  workflowName: "",
+  status: "",
+  startTimeBegin: [],
+  durationMin: "",
+  durationMax: "",
+});
 
 const form = ref({
   name: "My workflow",
@@ -246,14 +327,94 @@ const modifyForm = ref({
   name: "",
   description: "",
 });
+function handleClickOutside(event) {
+  const btn = buttonRef.value;
+  const panel = panelRef.value;
+
+  // 点击按钮或弹层内部，不收起
+  if (
+    (btn && btn.contains(event.target)) ||
+    (panel && panel.contains(event.target))
+  ) {
+    return;
+  }
+
+  // 点击 el-date-picker 弹层，也不收起
+  const pickerPanel = document.querySelector(".el-picker-panel");
+  if (pickerPanel && pickerPanel.contains(event.target)) {
+    return;
+  }
+
+  // 其他情况收起
+  showFilter.value = false;
+}
 
 onMounted(async () => {
+  document.addEventListener("click", handleClickOutside);
   const res = await service.get("/api/workflow/list", {
     params: { userId: localStorage.getItem("userId") },
   });
   workflows.value = res.data || [];
   console.log(workflows.value);
 });
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
+function toggleFilter() {
+  showFilter.value = !showFilter.value;
+}
+
+async function resetFilter() {
+  filterForm.value = {
+    userId: localStorage.getItem("userId"),
+    workflowName: null,
+    status: null,
+    startTimeBegin: null,
+    startTimeEnd: null,
+    durationMin: null,
+    durationMax: null,
+    offset: null,
+    pageSize: null,
+  };
+  const res = await service.post(
+    "/api/workflowExecute/listExecutions",
+    filterForm.value,
+  );
+  executions.value = res.data;
+}
+
+function applyFilter() {
+  fetchFilterExecutions();
+}
+async function fetchFilterExecutions() {
+  const params = buildQueryParams();
+  const res = await service.post("/api/workflowExecute/listExecutions", params);
+  executions.value = res.data;
+  console.log("filterExecutions:", res.data);
+}
+function buildQueryParams() {
+  return {
+    userId: localStorage.getItem("userId"),
+
+    workflowName: filterForm.value.workflowName || null,
+    status: filterForm.value.status || null,
+
+    startTimeBegin: filterForm.value.startTimeRange?.[0] || null,
+    startTimeEnd: filterForm.value.startTimeRange?.[1] || null,
+
+    durationMin: filterForm.value.durationMin
+      ? Number(filterForm.value.durationMin)
+      : null,
+
+    durationMax: filterForm.value.durationMax
+      ? Number(filterForm.value.durationMax)
+      : null,
+
+    // offset: 0,
+    // pageSize: 10,
+  };
+}
 
 function getStatusType(status) {
   switch (status) {
@@ -262,7 +423,7 @@ function getStatusType(status) {
     case "ERROR":
       return "danger";
     case "RUNNING":
-      return "running";
+      return "info";
     default:
       return "";
   }
@@ -517,6 +678,49 @@ function formatTime(ts) {
 }
 .workflow-tabs {
   margin-top: 10px;
+  .filter-wrapper {
+    width: 100%;
+    height: 45px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 5px;
+    position: relative;
+    .filter {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #303133;
+      padding: 4px;
+      box-sizing: border-box;
+      border-radius: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      img {
+        width: 100%;
+        height: 100%;
+      }
+    }
+    .filter:hover {
+      cursor: pointer;
+    }
+    .filter-panel {
+      position: absolute;
+      top: 45px; // 在按钮下方
+      right: 0;
+      width: 340px;
+      background: #fff;
+      border: 1px solid #ebeef5;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      z-index: 1000;
+    }
+    .filter-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
 }
 
 .toolbar {
