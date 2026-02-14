@@ -63,6 +63,7 @@ const workflowName = ref("未命名工作流");
 const currentWorkflowId = ref(
   Number(localStorage.getItem("current_workflow_id")) || null,
 );
+const nodeRuntimeData = ref({});
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -143,6 +144,10 @@ const groupedNodes = computed(() => {
 
   // 转数组 + 排序
   return Object.values(map).sort((a, b) => a.categoryOrder - b.categoryOrder);
+});
+const activeRuntimeData = computed(() => {
+  if (!activeNode.value) return null;
+  return nodeRuntimeData.value[activeNode.value.id];
 });
 
 function startDrag(template) {
@@ -323,12 +328,28 @@ async function generateEL() {
 
     stompClient.subscribe(`/workflow/flow/${chainId}`, (msg) => {
       const data = JSON.parse(msg.body);
-      const { id, event } = data;
+      const { id, event, payload } = data;
+      if (!nodeRuntimeData.value[id]) {
+        nodeRuntimeData.value[id] = {
+          input: null,
+          output: null,
+          logs: [],
+        };
+      }
+      const node = nodeRuntimeData.value[id];
       let status = "idle";
-      if (event === "NODE_START") status = "running";
-      if (event === "NODE_SUCCESS") status = "success";
-      if (event === "NODE_ERROR") status = "error";
-
+      if (event === "NODE_START") {
+        status = "running";
+        node.input = payload; // 节点入参
+      }
+      if (event === "NODE_SUCCESS") {
+        status = "success";
+        node.output = payload; // 节点执行结果
+      }
+      if (event === "NODE_ERROR") {
+        status = "error";
+      }
+      node.logs.push(data);
       updateNodeStatus(id, status);
       console.log("Received flow event:", data);
     });
@@ -679,6 +700,8 @@ function onEdgesChange(changes) {
       :paramsDialogFormData="paramsDialogFormData"
       :paramsDialogRules="paramsDialogRules"
       :activeNode="activeNode"
+      :inputData="activeRuntimeData?.input"
+      :outputData="activeRuntimeData?.output"
     />
   </div>
 </template>

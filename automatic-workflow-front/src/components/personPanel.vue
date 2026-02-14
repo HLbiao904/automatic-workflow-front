@@ -137,11 +137,19 @@
                 </el-form-item>
 
                 <el-form-item label="最小运行时间(ms)" prop="durationMin">
-                  <el-input v-model="filterForm.durationMin" type="number" />
+                  <el-input
+                    v-model="filterForm.durationMin"
+                    type="number"
+                    min="0"
+                  />
                 </el-form-item>
 
                 <el-form-item label="最大运行时间(ms)" prop="durationMax">
-                  <el-input v-model="filterForm.durationMax" type="number" />
+                  <el-input
+                    v-model="filterForm.durationMax"
+                    type="number"
+                    min="0"
+                  />
                 </el-form-item>
 
                 <div class="filter-actions">

@@ -70,6 +70,15 @@ function compileNode(nodeId, nodeMap, graph) {
       return compileNodeWithData(node);
   }
 }
+function appendNodeMeta(expr, node) {
+  const flowNodeId = node.id;
+  const nodeId = node.data?.nodeId;
+  const type = node.type;
+
+  const baseFields = [`id=${flowNodeId}`, `nodeId=${nodeId}`, `type=${type}`];
+
+  return `${expr}.data('${baseFields.join(",")}')`;
+}
 
 function compileNodeWithData(node) {
   const flowNodeId = node.id; // VueFlow 的 id
@@ -171,6 +180,7 @@ function compileWhen(node, edges, nodeMap, graph) {
   });
 
   return `WHEN(${branches.join(", ")})`;
+  // return appendNodeMeta(expr, node);
 }
 
 function compileSubFlow(startNodeId, nodeMap, graph) {
@@ -212,7 +222,8 @@ function compileBoolean(node, edges, nodeMap, graph) {
   const trueSeq = compileSequence(trueEdge.target, nodeMap, graph);
   const falseSeq = compileSequence(falseEdge.target, nodeMap, graph);
 
-  return `IF(${node.data.nodeId}, ${wrapThen(trueSeq, true)}, ${wrapThen(falseSeq, true)})`;
+  return `IF(${appendNodeMeta(node.data.nodeId, node)}, ${wrapThen(trueSeq, true)}, ${wrapThen(falseSeq, true)})`;
+  // return appendNodeMeta(expr, node);
 }
 
 function compileSwitch(node, edges, nodeMap, graph) {
@@ -234,12 +245,13 @@ function compileSwitch(node, edges, nodeMap, graph) {
     }
   }
 
-  let expr = `SWITCH(${node.data.nodeId}).to(${cases.join(", ")})`;
+  let expr = `SWITCH(${appendNodeMeta(node.data.nodeId, node)}).to(${cases.join(", ")})`;
 
   if (defaultCase) {
     expr += `.DEFAULT(${defaultCase})`;
   }
 
+  // return appendNodeMeta(expr, node);
   return expr;
 }
 
@@ -259,7 +271,7 @@ function compileFor(node, edges, nodeMap, graph) {
     { stopAt: new Set([node.id]) }, // 非常关键
   );
 
-  const forExpr = `FOR(${node.data.nodeId}).DO(${wrapThen(bodySeq, true)})`;
+  const forExpr = `FOR(${appendNodeMeta(node.data.nodeId, node)}).DO(${wrapThen(bodySeq, true)})`;
 
   // 2️⃣ for 后面还有流程
   if (nextEdge) {
@@ -267,5 +279,6 @@ function compileFor(node, edges, nodeMap, graph) {
     return wrapThen([forExpr, ...nextSeq], true);
   }
 
+  // return appendNodeMeta(forExpr, node);
   return forExpr;
 }
