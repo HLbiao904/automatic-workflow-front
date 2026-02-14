@@ -86,7 +86,8 @@ function selectExecution(exec) {
       params: { id: exec.workflowVersionId },
     })
     .then((res) => {
-      execNodes.value = normalizeNodes(JSON.parse(res.data.nodesJson) || []);
+      // execNodes.value = normalizeNodes(JSON.parse(res.data.nodesJson) || []);
+      execNodes.value = JSON.parse(res.data.nodesJson) || []; // executions回放展示运行状态
       execEdges.value = JSON.parse(res.data.edgesJson) || [];
     });
 }
