@@ -6,16 +6,17 @@
 
 import { ElMessage } from "element-plus";
 
-export function compileFlow(nodes, edges) {
+export function compileFlow(nodes, edges, options = {}) {
   const nodeMap = buildNodeMap(nodes);
   const graph = buildGraph(edges);
 
   const startNode = findStartNode(nodes);
   if (!startNode) {
     ElMessage.primary("未找到开始节点（start）");
+    return;
   }
 
-  return compileNode(startNode.id, nodeMap, graph);
+  return compileNode(startNode.id, nodeMap, graph, options);
 }
 
 /** ---------- 工具方法 ---------- **/
@@ -43,28 +44,27 @@ function findStartNode(nodes) {
 
 /** ---------- 核心递归编译 ---------- **/
 
-function compileNode(nodeId, nodeMap, graph) {
+function compileNode(nodeId, nodeMap, graph, options = {}) {
   const node = nodeMap[nodeId];
   if (!node) return "";
-
   switch (node.type) {
     case "start": {
       const next = graph[nodeId]?.[0]?.target;
-      const seq = compileSequence(next, nodeMap, graph);
+      const seq = compileSequence(next, nodeMap, graph, options);
       return wrapThen(seq, true);
     }
 
     case "boolean":
-      return compileBoolean(node, graph[nodeId], nodeMap, graph);
+      return compileBoolean(node, graph[nodeId], nodeMap, graph, options);
 
     case "switch":
-      return compileSwitch(node, graph[nodeId], nodeMap, graph);
+      return compileSwitch(node, graph[nodeId], nodeMap, graph, options);
 
     case "for":
-      return compileFor(node, graph[nodeId], nodeMap, graph);
+      return compileFor(node, graph[nodeId], nodeMap, graph, options);
 
     case "when":
-      return compileWhen(node, graph[node.id], nodeMap, graph);
+      return compileWhen(node, graph[node.id], nodeMap, graph, options);
 
     default:
       return compileNodeWithData(node);
@@ -129,7 +129,12 @@ function compileSequence(startNodeId, nodeMap, graph, options = {}) {
 
   while (current) {
     if (visited.has(current)) break;
-    if (stopAt.has(current)) break;
+    if (stopAt.has(current)) {
+      if (options.includeStop) {
+        result.push(compileNode(current, nodeMap, graph, options));
+      }
+      break;
+    }
 
     // 汇合点检测
     if (getInDegree(current, graph) > 1) {
@@ -167,7 +172,7 @@ function getInDegree(nodeId, graph) {
   }
   return count;
 }
-function compileWhen(node, edges, nodeMap, graph) {
+function compileWhen(node, edges, nodeMap, graph, options = {}) {
   const parallelEdges = edges.filter((e) => e.sourceHandle === "parallel");
 
   if (parallelEdges.length < 2) {
@@ -175,7 +180,7 @@ function compileWhen(node, edges, nodeMap, graph) {
   }
 
   const branches = parallelEdges.map((e) => {
-    const seq = compileSubFlow(e.target, nodeMap, graph);
+    const seq = compileSubFlow(e.target, nodeMap, graph, options);
     return wrapThen(seq, true);
   });
 
@@ -183,12 +188,19 @@ function compileWhen(node, edges, nodeMap, graph) {
   // return appendNodeMeta(expr, node);
 }
 
-function compileSubFlow(startNodeId, nodeMap, graph) {
+function compileSubFlow(startNodeId, nodeMap, graph, options = {}) {
   const result = [];
   let current = startNodeId;
   const visited = new Set();
 
   while (current && !visited.has(current)) {
+    if (options.stopAt?.has(current)) {
+      if (options.includeStop) {
+        result.push(compileNode(current, nodeMap, graph, options));
+      }
+      break;
+    }
+
     visited.add(current);
 
     const node = nodeMap[current];
@@ -211,7 +223,7 @@ function compileSubFlow(startNodeId, nodeMap, graph) {
   return result;
 }
 
-function compileBoolean(node, edges, nodeMap, graph) {
+function compileBoolean(node, edges, nodeMap, graph, options = {}) {
   const trueEdge = edges.find((e) => e.sourceHandle === "true");
   const falseEdge = edges.find((e) => e.sourceHandle === "false");
 
@@ -219,14 +231,14 @@ function compileBoolean(node, edges, nodeMap, graph) {
     ElMessage.primary(`Boolean 节点 ${node.id} 必须有 true / false 分支`);
   }
 
-  const trueSeq = compileSequence(trueEdge.target, nodeMap, graph);
-  const falseSeq = compileSequence(falseEdge.target, nodeMap, graph);
+  const trueSeq = compileSequence(trueEdge.target, nodeMap, graph, options);
+  const falseSeq = compileSequence(falseEdge.target, nodeMap, graph, options);
 
   return `IF(${appendNodeMeta(node.data.nodeId, node)}, ${wrapThen(trueSeq, true)}, ${wrapThen(falseSeq, true)})`;
   // return appendNodeMeta(expr, node);
 }
 
-function compileSwitch(node, edges, nodeMap, graph) {
+function compileSwitch(node, edges, nodeMap, graph, options = {}) {
   if (!edges || edges.length === 0) {
     ElMessage.primary(`Switch 节点 ${node.id} 没有任何分支`);
   }
@@ -235,7 +247,7 @@ function compileSwitch(node, edges, nodeMap, graph) {
   let defaultCase = null;
 
   for (const e of edges) {
-    const seq = compileSequence(e.target, nodeMap, graph);
+    const seq = compileSequence(e.target, nodeMap, graph, options);
     const body = wrapThen(seq, true);
 
     if (e.sourceHandle === "default") {
@@ -255,7 +267,7 @@ function compileSwitch(node, edges, nodeMap, graph) {
   return expr;
 }
 
-function compileFor(node, edges, nodeMap, graph) {
+function compileFor(node, edges, nodeMap, graph, options = {}) {
   const bodyEdge = edges.find((e) => e.sourceHandle === "body");
   const nextEdge = edges.find((e) => e.sourceHandle === "next");
 
@@ -268,14 +280,14 @@ function compileFor(node, edges, nodeMap, graph) {
     bodyEdge.target,
     nodeMap,
     graph,
-    { stopAt: new Set([node.id]) }, // 非常关键
+    { ...options, stopAt: new Set([node.id]) }, // 非常关键
   );
 
   const forExpr = `FOR(${appendNodeMeta(node.data.nodeId, node)}).DO(${wrapThen(bodySeq, true)})`;
 
   // 2️⃣ for 后面还有流程
   if (nextEdge) {
-    const nextSeq = compileSequence(nextEdge.target, nodeMap, graph);
+    const nextSeq = compileSequence(nextEdge.target, nodeMap, graph, options);
     return wrapThen([forExpr, ...nextSeq], true);
   }
 

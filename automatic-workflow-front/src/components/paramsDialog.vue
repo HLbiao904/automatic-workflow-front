@@ -20,22 +20,36 @@
     <div class="panel-wrapper">
       <splitpanes class="default-theme" v-if="renderSplit">
         <!-- 左：输入 -->
-        <pane size="33">
+        <pane size="33" :min-size="30">
           <div class="panel">
             <div class="panel-header">输入数据</div>
             <div class="json-box">
-              <vue-json-pretty
-                :data="inputData"
-                :deep="3"
-                :showLineNumber="true"
-                :collapsedOnClickBrackets="true"
-              />
+              <template v-if="hasInput">
+                <vue-json-pretty
+                  :data="inputData"
+                  :deep="3"
+                  :showLineNumber="true"
+                  :collapsedOnClickBrackets="true"
+                />
+              </template>
+
+              <template v-else>
+                <div class="empty-box" v-if="!isFirstNode">
+                  <div class="empty-info">暂无输入数据</div>
+                  <el-button type="primary" @click="runBeforeNodes">
+                    执行上游节点
+                  </el-button>
+                </div>
+                <div class="empty-box" v-else>
+                  <div class="empty-info">无输入数据</div>
+                </div>
+              </template>
             </div>
           </div>
         </pane>
 
         <!-- 中：参数 -->
-        <pane size="34">
+        <pane size="30" :min-size="20">
           <div class="panel">
             <div class="panel-header">参数配置</div>
 
@@ -63,8 +77,12 @@
               </el-form-item>
 
               <el-form-item>
-                <el-button type="success" :loading="running" @click="runNode">
-                  执行节点
+                <el-button
+                  type="success"
+                  :loading="running"
+                  @click="executeStep"
+                >
+                  执行下一步
                 </el-button>
 
                 <!-- <el-button @click="closeDialog"> 关闭 </el-button> -->
@@ -74,16 +92,27 @@
         </pane>
 
         <!-- 右：输出 -->
-        <pane size="33">
+        <pane size="33" :min-size="30">
           <div class="panel">
             <div class="panel-header">输出数据</div>
             <div class="json-box">
-              <vue-json-pretty
-                :data="outputData"
-                :deep="3"
-                :showLineNumber="true"
-                :collapsedOnClickBrackets="true"
-              />
+              <template v-if="hasOutput">
+                <vue-json-pretty
+                  :data="outputData"
+                  :deep="3"
+                  :showLineNumber="true"
+                  :collapsedOnClickBrackets="true"
+                />
+              </template>
+
+              <template v-else>
+                <div class="empty-box">
+                  <div class="empty-info">暂无输出数据</div>
+                  <el-button type="primary" @click="executeStep">
+                    执行下一步
+                  </el-button>
+                </div>
+              </template>
             </div>
           </div>
         </pane>
@@ -93,17 +122,19 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
 import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 
+const isFirstNode = ref(false);
 const props = defineProps({
   showParamsDialog: Boolean,
   paramsDialogFormData: Object,
   paramsDialogRules: Object,
   activeNode: Object,
+  relations: Object,
   inputData: {
     type: Object,
     default: () => ({}),
@@ -113,8 +144,18 @@ const props = defineProps({
     default: () => ({}),
   },
 });
-
-const emit = defineEmits(["update:showParamsDialog", "run-node"]);
+onMounted(() => {
+  props.relations.forEach((obj, index) => {
+    if (obj.curId == props.activeNode.id && obj.preId == 1) {
+      isFirstNode.value = true;
+    }
+  });
+});
+const emit = defineEmits([
+  "update:showParamsDialog",
+  "run-before-node",
+  "execute-step",
+]);
 
 const running = ref(false);
 const isFullscreen = ref(false);
@@ -130,27 +171,35 @@ watch(
   },
   { immediate: true },
 );
+const hasInput = computed(() => {
+  return props.inputData && Object.keys(props.inputData).length > 0;
+});
+const hasOutput = computed(() => {
+  return props.outputData && Object.keys(props.outputData).length > 0;
+});
 
+async function runBeforeNodes() {
+  running.value = true;
+  try {
+    emit("run-before-node", { id: props.activeNode.id });
+  } finally {
+    running.value = false;
+  }
+}
+async function executeStep() {
+  try {
+    running.value = true;
+    emit("execute-step", { id: props.activeNode.id });
+  } finally {
+    running.value = false;
+  }
+}
 function toggleFullscreen() {
   isFullscreen.value = !isFullscreen.value;
 }
 
 function closeDialog() {
   emit("update:showParamsDialog", false);
-}
-
-async function runNode() {
-  try {
-    running.value = true;
-
-    await emit("run-node", {
-      nodeId: props.paramsDialogFormData.nodeId,
-      params: props.activeNode?.data?.params || [],
-      input: props.inputData,
-    });
-  } finally {
-    running.value = false;
-  }
 }
 </script>
 
@@ -162,7 +211,7 @@ async function runNode() {
 }
 
 .panel-wrapper {
-  height: 75vh;
+  height: 80vh;
   min-height: 600px;
 }
 
@@ -186,5 +235,15 @@ async function runNode() {
   border: 1px solid #e4e7ed;
   border-radius: 8px;
   padding: 10px;
+}
+.empty-box {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.empty-info {
+  margin-bottom: 5px;
 }
 </style>

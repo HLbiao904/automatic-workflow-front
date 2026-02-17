@@ -60,6 +60,7 @@ const viewMode = ref("overwrite"); // 'editor' | 'executions'
 const isDirty = ref(false); // 是否有未保存更改
 const saving = ref(false);
 const workflowName = ref("未命名工作流");
+const relations = ref(null);
 const currentWorkflowId = ref(
   Number(localStorage.getItem("current_workflow_id")) || null,
 );
@@ -179,6 +180,8 @@ function startDrag(template) {
 }
 
 function onNodeClick({ node }) {
+  // 进入参数面板生成节点关系对象,用来判断哪个节点是第一个节点
+  relations.value = getRelateNodes();
   activeNode.value = node;
   // 节点没有nodeId直接返回,避免点击开始节点控制台报错
   if (!node.data.nodeId) return;
@@ -553,6 +556,39 @@ function onEdgesChange(changes) {
     isDirty.value = true;
   }
 }
+function runBeforeNodes({ id }) {
+  // 执行上游节点
+  const connectedNodeIds = new Set(
+    edges.value.flatMap((e) => [e.source, e.target]),
+  );
+  const activeNodes = nodes.value.filter((n) => connectedNodeIds.has(n.id));
+  const el = compileFlow(activeNodes, edges.value, {
+    stopAt: new Set([id]),
+    includeStop: false,
+  });
+  console.log("生成 EL:", el);
+  const chainId = Date.now().toString();
+
+  const relations = getRelateNodes();
+  console.log("节点关系:", relations);
+}
+function executeStep({ id }) {
+  console.log("executeStep", id);
+  // 执行下一步
+  const connectedNodeIds = new Set(
+    edges.value.flatMap((e) => [e.source, e.target]),
+  );
+  const activeNodes = nodes.value.filter((n) => connectedNodeIds.has(n.id));
+  const el = compileFlow(activeNodes, edges.value, {
+    stopAt: new Set([id]),
+    includeStop: true,
+  });
+  console.log("生成 EL:", el);
+  const chainId = Date.now().toString();
+
+  const relations = getRelateNodes();
+  console.log("节点关系:", relations);
+}
 /* const executions = ref([
   // 示例数据
   {
@@ -702,6 +738,9 @@ function onEdgesChange(changes) {
       :activeNode="activeNode"
       :inputData="activeRuntimeData?.input"
       :outputData="activeRuntimeData?.output"
+      :relations="relations"
+      @run-before-node="runBeforeNodes"
+      @execute-step="executeStep"
     />
   </div>
 </template>
