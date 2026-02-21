@@ -6,6 +6,7 @@
         :sessionId="currentSessionId"
         @session-created="onSessionCreated"
         @title-updated="onTitleUpdated"
+        @change-isNewSession="closeIsNewSession"
         :isNewSession="isNewSession"
       />
     </main>
@@ -26,7 +27,7 @@
           <img src="../assets/newChat.svg" />
           <div class="newChat-title">新聊天</div>
         </div>
-        <div class="new-chat-icon" v-else>
+        <div class="new-chat-icon" v-else @click="createSession">
           <img src="../assets/newChat.svg" />
         </div>
       </div>
@@ -181,7 +182,9 @@ function onSessionCreated(session) {
   sessions.value.unshift(session);
   currentSessionId.value = session.id;
 }
-
+function closeIsNewSession() {
+  isNewSession.value = false; // 关闭新会话状态
+}
 async function loadSessions() {
   const res = await service.get("/chat/sessionHistory/list", {
     params: {
@@ -208,15 +211,10 @@ onMounted(() => {
   userId = localStorage.getItem("userId");
   loadSessions();
 });
-async function createSession() {
-  const res = await service.post("/chat/newSession", {
-    userId,
-    title: "新对话",
-  });
+
+function createSession() {
   isNewSession.value = true;
-  const newSession = res.data;
-  sessions.value.unshift(newSession);
-  currentSessionId.value = newSession.id;
+  currentSessionId.value = null; // null 表示还没入库
 }
 function switchSession(session) {
   if (session.id == currentSessionId.value) return;

@@ -88,6 +88,9 @@
                 <!-- <el-button @click="closeDialog"> 关闭 </el-button> -->
               </el-form-item>
             </el-form>
+            <div>
+              <VideoPlayer v-if="videoPath" :path="videoPath" />
+            </div>
           </div>
         </pane>
 
@@ -127,7 +130,9 @@ import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
 import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
+import VideoPlayer from "../components/videoPlayer.vue";
 
+const videoPath = ref("");
 const isFirstNode = ref(false);
 const props = defineProps({
   showParamsDialog: Boolean,

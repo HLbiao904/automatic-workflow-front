@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-view">
+  <div :class="['chat-view', { empty: isEmpty }]">
     <!-- 消息区 -->
     <div class="messages" ref="msgBox">
       <div class="center-container">
@@ -31,6 +31,9 @@
 
     <!-- 底部输入区（不再 fixed） -->
     <div class="input-wrapper">
+      <div v-if="isEmpty" class="welcome">
+        <h2>开始新的对话</h2>
+      </div>
       <div class="floating-input">
         <textarea
           v-model="input"
@@ -48,7 +51,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, computed } from "vue";
 import { marked } from "marked";
 import "github-markdown-css/github-markdown-light.css";
 import service from "../service/index.js";
@@ -66,7 +69,11 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["session-created", "title-updated"]);
+const emit = defineEmits([
+  "session-created",
+  "title-updated",
+  "change-isNewSession",
+]);
 
 /* ---------------- markdown config ---------------- */
 
@@ -74,7 +81,7 @@ marked.setOptions({
   gfm: true,
   breaks: true,
 });
-
+const isEmpty = computed(() => messages.value.length === 0);
 /* ---------------- state ---------------- */
 
 const messages = ref([]);
@@ -88,6 +95,12 @@ const localSessionId = ref(props.sessionId);
 watch(
   () => props.sessionId,
   (newId) => {
+    if (!newId) {
+      // 新会话 → 清空消息
+      messages.value = []; // 清空历史消息,计算属性会根据这里判断是否展示新会话
+      localSessionId.value = null;
+      return;
+    }
     if (newId && newId !== localSessionId.value) {
       localSessionId.value = newId;
       loadHistory(newId);
@@ -95,7 +108,6 @@ watch(
   },
   { immediate: true },
 );
-
 /* ---------------- history ---------------- */
 
 async function loadHistory(sessionId) {
@@ -141,10 +153,10 @@ async function send() {
 
   try {
     // 2️⃣ 创建 session
-    if (!sid) {
+    if (props.isNewSession) {
       const res = await service.post("/chat/newSession", {
         userId: localStorage.getItem("userId"),
-        title: question.slice(0, 20),
+        title: "新对话",
       });
 
       sid = res.data.id;
@@ -225,6 +237,7 @@ async function send() {
     if (props.isNewSession) {
       generateTitle(question);
     }
+    emit("change-isNewSession"); // 将新会话状态置为false
   } catch (e) {
     console.error(e);
     const msg = messages.value.find((m) => m.role === "assistant");
@@ -386,5 +399,66 @@ function scrollBottom() {
   font-family: inherit;
   font-size: 14px;
   line-height: 1.6;
+}
+/* ================= 空状态 ================= */
+
+/* ================= ChatGPT 空状态 ================= */
+
+.chat-view.empty {
+  justify-content: center;
+  background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);
+}
+
+.chat-view.empty .messages {
+  display: none;
+}
+
+.chat-view.empty .input-wrapper {
+  flex: none;
+  padding: 0;
+}
+/* 欢迎标题 */
+.welcome {
+  text-align: center;
+  margin-bottom: 48px;
+  animation: fadeIn 0.6s ease;
+}
+
+.welcome h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: #111827;
+  letter-spacing: -0.5px;
+}
+
+.floating-input {
+  transition: all 0.35s ease;
+}
+
+.chat-view.empty .floating-input {
+  transform: translateY(-20px);
+  animation: floatUp 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-20px);
+  }
 }
 </style>

@@ -72,10 +72,10 @@ const props = defineProps({
 
 const x = computed(() => `${Math.round(props.position.x)}px`);
 const y = computed(() => `${Math.round(props.position.y)}px`);
-onMounted(() => {
+/* onMounted(() => {
   console.log("switchNode mounted with data:", props.data);
   console.log("Node ID:", props.id, "Node Position:", props.position);
-});
+}); */
 </script>
 
 <style scoped>
