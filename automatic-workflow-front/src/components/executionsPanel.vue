@@ -35,6 +35,19 @@ const props = defineProps({
 const executions = ref([]);
 const activeId = ref(null);
 
+const collapsed = ref(false);
+const activeNodeId = ref(null);
+const ioTab = ref("input");
+
+function toggleExecPanel() {
+  collapsed.value = !collapsed.value;
+}
+
+const activeNodeEvent = computed(() => {
+  if (!activeExecution.value || !activeNodeId.value) return null;
+  return activeExecution.value.events.find((e) => e.id === activeNodeId.value);
+});
+
 const activeExecution = computed(() =>
   executions.value.find((e) => e.id === activeId.value),
 );
@@ -208,27 +221,105 @@ function formatTime(ts) {
       </div>
 
       <!-- 下半区信息 -->
-      <div class="exec-info">
-        <h3>Execution {{ activeExecution.id }}</h3>
+      <div
+        class="exec-info n8n-style"
+        :class="{ collapsed }"
+        v-if="activeExecution"
+      >
+        <!-- 顶部折叠栏 -->
+        <div class="exec-collapse-bar" @click="toggleExecPanel">
+          <div class="collapse-left">
+            <span class="title"> Execution {{ activeExecution.id }} Logs </span>
+            <span class="summary">
+              {{ activeExecution.status }}
+              · {{ formatTime(activeExecution.startTime) }}
+            </span>
+          </div>
 
-        <div class="detail-meta">
-          <span>状态：{{ activeExecution.status }}</span>
-          <span>开始：{{ formatTime(activeExecution.startTime) }}</span>
-          <span v-if="activeExecution.endTime">
-            结束：{{ formatTime(activeExecution.endTime) }}
-          </span>
+          <div class="collapse-right">
+            <span class="arrow">
+              {{ collapsed ? "▲" : "▼" }}
+            </span>
+          </div>
         </div>
 
-        <div class="event-timeline">
-          <div
-            v-for="(ev, i) in activeExecution.events"
-            :key="i"
-            class="event-item"
-            :class="ev.event.toLowerCase()"
-          >
-            <span class="event-time">{{ formatTime(ev.time) }}</span>
-            <span class="event-node">{{ ev.id }}</span>
-            <span class="event-type">{{ ev.event }}</span>
+        <!-- 内容区 -->
+        <div v-show="!collapsed" class="exec-body">
+          <!-- 左侧节点列表 -->
+          <div class="node-list">
+            <div
+              v-for="(ev, i) in activeExecution.events"
+              :key="i"
+              class="node-item"
+              :class="{ active: ev.id === activeNodeId }"
+              @click.stop="activeNodeId = ev.id"
+            >
+              <div class="node-name">
+                {{ ev.id }}
+              </div>
+
+              <div class="node-status" :class="ev.event.toLowerCase()">
+                {{ ev.event }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧详情 -->
+          <div class="node-detail">
+            <template v-if="activeNodeEvent">
+              <!-- 顶部节点信息 -->
+              <div class="node-header">
+                <div class="left">
+                  <span class="title">
+                    {{ activeNodeEvent.id }}
+                  </span>
+
+                  <span
+                    class="status"
+                    :class="activeNodeEvent.event.toLowerCase()"
+                  >
+                    {{ activeNodeEvent.event }}
+                  </span>
+
+                  <span class="duration">
+                    ⏱ {{ formatDuration(activeNodeEvent.duration) }}
+                  </span>
+                </div>
+
+                <!-- IO 切换 -->
+                <div class="right">
+                  <button
+                    :class="{ active: ioTab === 'input' }"
+                    @click="ioTab = 'input'"
+                  >
+                    Input
+                  </button>
+
+                  <button
+                    :class="{ active: ioTab === 'output' }"
+                    @click="ioTab = 'output'"
+                  >
+                    Output
+                  </button>
+                </div>
+              </div>
+
+              <!-- JSON 数据区 -->
+              <div class="node-json">
+                <pre v-if="ioTab === 'input'"
+                  >{{ JSON.stringify(activeNodeEvent.input || {}, null, 2) }}
+          </pre
+                >
+
+                <pre v-else
+                  >{{ JSON.stringify(activeNodeEvent.output || {}, null, 2) }}
+          </pre
+                >
+              </div>
+            </template>
+
+            <!-- 未选择节点 -->
+            <div v-else class="node-empty">请选择一个节点查看运行数据</div>
           </div>
         </div>
       </div>
@@ -439,5 +530,249 @@ function formatTime(ts) {
   align-items: center;
   justify-content: center;
   color: #999;
+}
+/* =============================
+   Execution Panel - n8n Style
+   ============================= */
+
+.exec-info.n8n-style {
+  display: flex;
+  flex-direction: column;
+  height: 40%;
+  min-height: 42px;
+  border-top: 1px solid #e4e7ed;
+  background: #fff;
+  transition: height 0.25s ease;
+}
+
+/* 折叠状态 */
+.exec-info.collapsed {
+  height: 42px;
+}
+
+/* =============================
+   折叠顶部栏
+   ============================= */
+
+.exec-collapse-bar {
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #ebeef5;
+  background: #f5f7fa;
+  user-select: none;
+
+  &:hover {
+    background: #eaeef2;
+  }
+
+  .collapse-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .summary {
+      font-size: 12px;
+      color: #909399;
+    }
+  }
+
+  .collapse-right {
+    .arrow {
+      font-size: 12px;
+      color: #909399;
+    }
+  }
+}
+
+/* =============================
+   主体区域
+   ============================= */
+
+.exec-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* =============================
+   左侧节点列表
+   ============================= */
+
+.node-list {
+  width: 240px;
+  border-right: 1px solid #e4e7ed;
+  overflow-y: auto;
+  background: #fafafa;
+}
+
+.node-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #f0f3f6;
+  }
+
+  &.active {
+    background: #ecf5ff;
+  }
+
+  .node-name {
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  .node-status {
+    font-size: 12px;
+    margin-top: 4px;
+
+    &.node_success {
+      color: #67c23a;
+    }
+
+    &.node_error {
+      color: #f56c6c;
+    }
+
+    &.node_start {
+      color: #409eff;
+    }
+
+    &.running {
+      color: #e6a23c;
+    }
+  }
+}
+
+/* =============================
+   右侧详情区域
+   ============================= */
+
+.node-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+/* 顶部节点信息栏 */
+.node-header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid #ebeef5;
+  background: #fafafa;
+
+  .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status {
+      font-size: 13px;
+
+      &.node_success {
+        color: #67c23a;
+      }
+
+      &.node_error {
+        color: #f56c6c;
+      }
+
+      &.node_start {
+        color: #409eff;
+      }
+
+      &.running {
+        color: #e6a23c;
+      }
+    }
+
+    .duration {
+      font-size: 12px;
+      color: #666;
+    }
+  }
+
+  /* Input / Output 切换按钮 */
+  .right {
+    display: flex;
+    gap: 6px;
+
+    button {
+      border: 1px solid #dcdfe6;
+      background: #fff;
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #f5f7fa;
+      }
+
+      &.active {
+        background: #409eff;
+        border-color: #409eff;
+        color: #fff;
+      }
+    }
+  }
+}
+
+/* =============================
+   JSON 数据展示区
+   ============================= */
+
+.node-json {
+  flex: 1;
+  overflow: auto;
+  padding: 14px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+
+  pre {
+    margin: 0;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+/* =============================
+   空状态
+   ============================= */
+
+.node-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 13px;
 }
 </style>

@@ -329,9 +329,22 @@ async function generateEL() {
     const relations = getRelateNodes();
     console.log("节点关系:", relations);
 
+    // 将执行记录入库
+    const res2 = await service.post("api/workflowExecute/execute", {
+      userId: 1,
+      workflowId: localStorage.getItem("current_workflow_id"),
+      dirty: isDirty.value,
+      nodes: nodes.value,
+      edges: edges.value,
+      triggerType: "MANUAL",
+      status: "RUNNING",
+      duration: null,
+    });
+    const executionId = res2.data.executionId;
+
     stompClient.subscribe(`/workflow/flow/${chainId}`, (msg) => {
       const data = JSON.parse(msg.body);
-      const { id, event, payload } = data;
+      const { id, event, payload, type, duration } = data;
       if (!nodeRuntimeData.value[id]) {
         nodeRuntimeData.value[id] = {
           input: null,
@@ -340,17 +353,47 @@ async function generateEL() {
         };
       }
       const node = nodeRuntimeData.value[id];
+
       let status = "idle";
       if (event === "NODE_START") {
         status = "running";
-        node.input = payload; // 节点入参
+        node.input = payload; // 节点输入数据
       }
       if (event === "NODE_SUCCESS") {
         status = "success";
-        node.output = payload; // 节点执行结果
+        node.output = payload; // 节点执行结果/输出数据
+        const executionDetailNode = buildExecutionDetail({
+          executionId,
+          id,
+          type,
+          status: "success",
+          input: node.input,
+          output: payload,
+          duration,
+        });
+        // 节点详细信息入库
+        service.post(
+          "api/workflowExecute/saveExecuteDetail",
+          executionDetailNode,
+        );
+        console.log("executionDetailNode:", executionDetailNode);
       }
       if (event === "NODE_ERROR") {
         status = "error";
+        const executionDetailNode = buildExecutionDetail({
+          executionId,
+          id,
+          type,
+          status: "error",
+          input: node.input,
+          duration,
+          error: payload,
+        });
+        // 节点详细信息入库
+        service.post(
+          "api/workflowExecute/saveExecuteDetail",
+          executionDetailNode,
+        );
       }
       node.logs.push(data);
       updateNodeStatus(id, status);
@@ -364,21 +407,42 @@ async function generateEL() {
     });
     const status = res.data.success ? "SUCCESS" : "ERROR";
     const duration = res.data.duration; // 工作流执行时间
-    // 将执行记录入库
-    await service.post("api/workflowExecute/execute", {
-      userId: 1,
-      workflowId: localStorage.getItem("current_workflow_id"),
-      dirty: isDirty.value,
-      nodes: nodes.value,
-      edges: edges.value,
-      triggerType: "MANUAL",
-      status: status,
-      duration: duration,
+    // 更新execution状态和运行时间
+    const res3 = await service.put("api/workflowExecute/updateExecution", {
+      executionId,
+      status,
+      duration,
     });
+
     isDirty.value = false;
   } catch (err) {
     ElMessage.warning(err.message);
   }
+}
+
+function buildExecutionDetail({
+  id,
+  executionId,
+  type,
+  status,
+  input,
+  output,
+  duration,
+  error,
+}) {
+  const nodeName = nodes.value.find((n) => n.id === id)?.label;
+
+  return {
+    executionId,
+    nodeId: id,
+    nodeName,
+    nodeType: type,
+    inputData: input ? JSON.stringify(input) : null,
+    outputData: output ? JSON.stringify(output) : null,
+    errorMessage: error ?? null,
+    status,
+    runTime: duration,
+  };
 }
 // 删除nodes.data下的status属性,避免被持久化
 function stripNodeStatus(nodes) {
