@@ -1,13 +1,23 @@
 <template>
   <div
     class="node-container"
-    @mouseleave="hover = false"
+    @mouseleave="handleMouseLeave"
     @mouseenter="hover = true"
+    ref="nodeRef"
   >
     <div v-show="hover && showToolBar" class="node-actions">
-      <button class="action-btn" @click.stop="removeNode">✕</button>
-      <button class="action-btn">✎</button>
-      <button class="action-btn">⎘</button>
+      <div class="action-btn start-btn" @click.stop="handleStart">
+        <img src="../assets/start.svg" />
+      </div>
+      <div class="action-btn rename-btn" @click.stop="handleRename">
+        <img src="../assets/rename.svg" />
+      </div>
+      <div class="action-btn remove-btn" @click.stop="handleDelete">
+        <img src="../assets/delete.svg" />
+      </div>
+      <div class="action-btn more-btn" @click.stop="moreAction">
+        <img src="../assets/more.svg" />
+      </div>
     </div>
     <div class="boolean-node">
       <div class="node-body">
@@ -29,17 +39,39 @@
       />
     </div>
     <div class="node-title">{{ props.label }}</div>
+    <!-- More Panel -->
+    <MorePanel
+      :showMore="showMore"
+      :panelStyle="panelStyle"
+      @action="handleAction"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
+import MorePanel from "../components/MorePanel.vue";
 const { removeNodes } = useVueFlow();
 const hover = ref(false);
+const showMore = ref(false);
+const locked = ref(false);
+const nodeRef = ref(null);
+const panelStyle = ref({
+  top: "0px",
+  left: "0px",
+});
 function removeNode() {
   removeNodes([props.id]);
 }
+const emit = defineEmits([
+  "start-node",
+  "rename-node",
+  "open-node",
+  "execute-node",
+  "duplicate-node",
+  "replace-node",
+]);
 const props = defineProps({
   id: {
     type: String,
@@ -69,13 +101,123 @@ const props = defineProps({
 
 const x = computed(() => `${Math.round(props.position.x)}px`);
 const y = computed(() => `${Math.round(props.position.y)}px`);
+function closePanel() {
+  showMore.value = false;
+  locked.value = false;
+}
+function handleAction(type) {
+  showMore.value = false;
+
+  switch (type) {
+    case "open": {
+      emit("open-node", props.id);
+      break;
+    }
+    case "rename":
+      emit("rename-node", props.id);
+      break;
+    case "execute":
+      emit("execute-node", props.id);
+      break;
+    case "duplicate":
+      emit("duplicate-node", props.id);
+      break;
+    case "delete":
+      removeNode();
+      break;
+    case "replace":
+      emit("replace-node", props.id);
+      break;
+  }
+}
+/* 点击外部关闭 */
+function handleClickOutside(e) {
+  if (!e.target.closest(".node-container")) {
+    showMore.value = false;
+    hover.value = false;
+    locked.value = false; // 解除锁定
+  }
+}
+
 onMounted(() => {
-  console.log("booleanNode mounted with data:", props.data);
-  console.log("Node ID:", props.id, "Node Position:", props.position);
+  document.addEventListener("click", handleClickOutside);
 });
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
+function handleStart() {
+  closePanel(); // 先关闭 panel
+  startNode(); // 再执行原逻辑
+}
+function handleRename() {
+  closePanel();
+  renameNode();
+}
+function handleDelete() {
+  closePanel();
+  removeNode();
+}
+function startNode() {
+  emit("start-node", props.id);
+}
+function renameNode() {
+  ElMessageBox.prompt("请输入新的节点名称", "重命名", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+  })
+    .then(({ value }) => {
+      updateNode(props.id, { label: value });
+    })
+    .catch(() => {});
+}
+function handleMouseLeave() {
+  if (!locked.value) {
+    hover.value = false;
+  }
+}
+function moreAction() {
+  showMore.value = !showMore.value;
+  locked.value = showMore.value;
+
+  if (showMore.value) {
+    if (!showMore.value) return;
+
+    nextTick(() => {
+      const rect = nodeRef.value.getBoundingClientRect();
+
+      const panelWidth = 180; // 和 CSS 一致
+      const panelHeight = 220; // 估算高度（或者用offsetHeight更精确）
+      const gap = 8;
+
+      let top = rect.top;
+      let left = rect.right + gap;
+
+      /* ----------  右侧空间不足 → 显示在左侧 ---------- */
+      if (window.innerWidth - rect.right < panelWidth) {
+        left = rect.left - panelWidth / 2 - gap;
+      }
+
+      /* ----------  底部空间不足 → 向上移动 ---------- */
+      if (window.innerHeight - rect.top < panelHeight) {
+        top = window.innerHeight - panelHeight - 10;
+      }
+
+      /* ----------  防止顶部溢出 ---------- */
+      if (top < 10) {
+        top = 10;
+      }
+
+      panelStyle.value = {
+        top: top + "px",
+        left: left + "px",
+      };
+    });
+  }
+}
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .node-container {
   position: relative;
   display: inline-block;
@@ -105,6 +247,7 @@ onMounted(() => {
   width: fit-content;
   position: absolute;
   top: -28px;
+  left: -10px;
   display: flex;
   gap: 4px;
   background: #fff;
@@ -120,6 +263,10 @@ onMounted(() => {
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 12px;
+  img {
+    width: 12px;
+    height: 12px;
+  }
 }
 
 .action-btn:hover {
