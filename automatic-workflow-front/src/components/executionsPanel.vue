@@ -32,6 +32,7 @@ const props = defineProps({
 });
 
 /* ========== execution list ========== */
+const executionDetailNodes = ref([]);
 const executions = ref([]);
 const activeId = ref(null);
 
@@ -39,13 +40,27 @@ const collapsed = ref(false);
 const activeNodeId = ref(null);
 const ioTab = ref("input");
 
+const viewMode = ref("input"); // input | output | both
+
+function safeParse(val) {
+  if (!val) return {};
+  if (typeof val === "object") return val;
+
+  try {
+    return JSON.parse(val);
+  } catch (e) {
+    return { raw: val };
+  }
+}
+
 function toggleExecPanel() {
   collapsed.value = !collapsed.value;
 }
 
 const activeNodeEvent = computed(() => {
-  if (!activeExecution.value || !activeNodeId.value) return null;
-  return activeExecution.value.events.find((e) => e.id === activeNodeId.value);
+  if (!activeNodeId.value) return null;
+
+  return executionDetailNodes.value.find((e) => e.id === activeNodeId.value);
 });
 
 const activeExecution = computed(() =>
@@ -91,9 +106,14 @@ function normalizeNodes(nodes) {
   }));
 }
 
-function selectExecution(exec) {
+async function selectExecution(exec) {
   activeId.value = exec.id;
-
+  activeNodeId.value = null;
+  const res = await service.get("api/workflowExecute/queryExecutionNodes", {
+    params: { executionId: exec.id },
+  });
+  // 获取该execution的节点执行详情列表，包含每个节点的输入输出数据、运行状态、错误信息等
+  executionDetailNodes.value = res.data || [];
   service
     .get("api/workflowExecute/executionVersion", {
       params: { id: exec.workflowVersionId },
@@ -248,18 +268,16 @@ function formatTime(ts) {
           <!-- 左侧节点列表 -->
           <div class="node-list">
             <div
-              v-for="(ev, i) in activeExecution.events"
+              v-for="(en, i) in executionDetailNodes"
               :key="i"
               class="node-item"
-              :class="{ active: ev.id === activeNodeId }"
-              @click.stop="activeNodeId = ev.id"
+              :class="{ active: en.id === activeNodeId }"
+              @click.stop="activeNodeId = en.id"
             >
-              <div class="node-name">
-                {{ ev.id }}
-              </div>
+              <div class="node-name">{{ en.nodeName }} ({{ en.nodeType }})</div>
 
-              <div class="node-status" :class="ev.event.toLowerCase()">
-                {{ ev.event }}
+              <div class="node-status" :class="en.status">
+                {{ en.status }}
               </div>
             </div>
           </div>
@@ -271,50 +289,89 @@ function formatTime(ts) {
               <div class="node-header">
                 <div class="left">
                   <span class="title">
-                    {{ activeNodeEvent.id }}
+                    {{ activeNodeEvent.nodeName }}
                   </span>
 
-                  <span
-                    class="status"
-                    :class="activeNodeEvent.event.toLowerCase()"
-                  >
-                    {{ activeNodeEvent.event }}
+                  <span class="status" :class="activeNodeEvent.status">
+                    {{ activeNodeEvent.status }}
                   </span>
 
                   <span class="duration">
-                    ⏱ {{ formatDuration(activeNodeEvent.duration) }}
+                    ⏱ {{ formatDuration(activeNodeEvent.runTime) }}
                   </span>
                 </div>
 
                 <!-- IO 切换 -->
                 <div class="right">
                   <button
-                    :class="{ active: ioTab === 'input' }"
-                    @click="ioTab = 'input'"
+                    :class="{ active: viewMode === 'input' }"
+                    @click="viewMode = 'input'"
                   >
                     Input
                   </button>
 
                   <button
-                    :class="{ active: ioTab === 'output' }"
-                    @click="ioTab = 'output'"
+                    :class="{ active: viewMode === 'output' }"
+                    @click="viewMode = 'output'"
                   >
                     Output
+                  </button>
+
+                  <button
+                    :class="{ active: viewMode === 'both' }"
+                    @click="viewMode = 'both'"
+                  >
+                    Both
                   </button>
                 </div>
               </div>
 
               <!-- JSON 数据区 -->
               <div class="node-json">
-                <pre v-if="ioTab === 'input'"
-                  >{{ JSON.stringify(activeNodeEvent.input || {}, null, 2) }}
-          </pre
-                >
+                <!-- 单独 Input -->
+                <div v-if="viewMode === 'input'" class="io-block">
+                  <div class="io-title">Input</div>
+                  <json-viewer
+                    :value="safeParse(activeNodeEvent.inputData)"
+                    :expanded="true"
+                    :copyable="true"
+                    boxed
+                  />
+                </div>
 
-                <pre v-else
-                  >{{ JSON.stringify(activeNodeEvent.output || {}, null, 2) }}
-          </pre
-                >
+                <!-- 单独 Output -->
+                <div v-if="viewMode === 'output'" class="io-block">
+                  <div class="io-title">Output</div>
+                  <json-viewer
+                    :value="safeParse(activeNodeEvent.outputData)"
+                    :expanded="true"
+                    :copyable="true"
+                    boxed
+                  />
+                </div>
+
+                <!-- 同时展示 -->
+                <div v-if="viewMode === 'both'" class="both-container">
+                  <div class="io-block">
+                    <div class="io-title">Input</div>
+                    <json-viewer
+                      :value="safeParse(activeNodeEvent.inputData)"
+                      :expanded="true"
+                      :copyable="true"
+                      boxed
+                    />
+                  </div>
+
+                  <div class="io-block">
+                    <div class="io-title">Output</div>
+                    <json-viewer
+                      :value="safeParse(activeNodeEvent.outputData)"
+                      :expanded="true"
+                      :copyable="true"
+                      boxed
+                    />
+                  </div>
+                </div>
               </div>
             </template>
 
@@ -638,15 +695,15 @@ function formatTime(ts) {
     font-size: 12px;
     margin-top: 4px;
 
-    &.node_success {
+    &.success {
       color: #67c23a;
     }
 
-    &.node_error {
+    &.error {
       color: #f56c6c;
     }
 
-    &.node_start {
+    &.start {
       color: #409eff;
     }
 
@@ -690,15 +747,15 @@ function formatTime(ts) {
     .status {
       font-size: 13px;
 
-      &.node_success {
+      &.success {
         color: #67c23a;
       }
 
-      &.node_error {
+      &.error {
         color: #f56c6c;
       }
 
-      &.node_start {
+      &.start {
         color: #409eff;
       }
 
@@ -774,5 +831,36 @@ function formatTime(ts) {
   justify-content: center;
   color: #999;
   font-size: 13px;
+}
+.node-json {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.io-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.io-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #999;
+}
+
+.json-viewer {
+  font-size: 13px;
+}
+.both-container {
+  display: flex;
+  gap: 20px;
+  flex: 1;
 }
 </style>
