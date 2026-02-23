@@ -39,7 +39,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+  watch,
+} from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import MorePanel from "../components/MorePanel.vue";
 const { removeNodes } = useVueFlow();
@@ -87,8 +94,21 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  closeMorePanel: {
+    type: Boolean,
+    default: false,
+  },
 });
-
+watch(
+  () => props.closeMorePanel,
+  (newVal) => {
+    if (newVal == true) {
+      showMore.value = false;
+      hover.value = false;
+      locked.value = false;
+    }
+  },
+);
 const x = computed(() => `${Math.round(props.position.x)}px`);
 const y = computed(() => `${Math.round(props.position.y)}px`);
 function closePanel() {
@@ -126,6 +146,11 @@ function handleClickOutside(e) {
     showMore.value = false;
     hover.value = false;
     locked.value = false; // 解除锁定
+  }
+}
+function handleMouseLeave() {
+  if (!locked.value) {
+    hover.value = false;
   }
 }
 onMounted(() => {

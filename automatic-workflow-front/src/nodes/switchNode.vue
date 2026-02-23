@@ -50,7 +50,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+  watch,
+} from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import MorePanel from "../components/MorePanel.vue";
 const { removeNodes } = useVueFlow();
@@ -99,7 +106,21 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  closeMorePanel: {
+    type: Boolean,
+    default: false,
+  },
 });
+watch(
+  () => props.closeMorePanel,
+  (newVal) => {
+    if (newVal == true) {
+      showMore.value = false;
+      hover.value = false;
+      locked.value = false;
+    }
+  },
+);
 function closePanel() {
   showMore.value = false;
   locked.value = false;

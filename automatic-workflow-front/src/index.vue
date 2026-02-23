@@ -65,6 +65,7 @@ const currentWorkflowId = ref(
   Number(localStorage.getItem("current_workflow_id")) || null,
 );
 const nodeRuntimeData = ref({});
+const closeMorePanel = ref(null);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -196,6 +197,7 @@ function onNodeClick({ node }) {
   };
 
   showParamsDialog.value = true; // 显示弹窗
+  closeMorePanel.value = true; // 关闭更多操作面板
 }
 function norm(h) {
   return h ?? "__default__";
@@ -806,10 +808,26 @@ async function executeParamsFlow(id, includeStop = false) {
           @edgesChange="onEdgesChange"
         >
           <template #node-common="nodeProps">
-            <CommonNode v-bind="nodeProps" @add-node="openDrawer" />
+            <CommonNode
+              v-bind="nodeProps"
+              @add-node="openDrawer"
+              :closeMorePanel="closeMorePanel"
+            />
           </template>
           <template #node-start="nodeProps">
             <StartNode v-bind="nodeProps" @add-node="openDrawer" />
+          </template>
+          <template #node-switch="nodeProps">
+            <SwitchNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
+          </template>
+          <template #node-boolean="nodeProps">
+            <BooleanNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
+          </template>
+          <template #node-for="nodeProps">
+            <ForNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
+          </template>
+          <template #node-when="nodeProps">
+            <WhenNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
           </template>
           <Controls />
           <MiniMap pannable zoomable />
@@ -839,6 +857,7 @@ async function executeParamsFlow(id, includeStop = false) {
       :relations="relations"
       @run-before-node="runBeforeNodes"
       @execute-step="executeStep"
+      @close-params-dialog="closeMorePanel = false"
     />
   </div>
 </template>

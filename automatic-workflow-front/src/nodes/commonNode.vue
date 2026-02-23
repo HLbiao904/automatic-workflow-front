@@ -62,6 +62,7 @@ import {
   onBeforeUnmount,
   onUpdated,
   nextTick,
+  watch,
 } from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import { NodeToolbar } from "@vue-flow/node-toolbar";
@@ -236,7 +237,21 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  closeMorePanel: {
+    type: Boolean,
+    default: false,
+  },
 });
+watch(
+  () => props.closeMorePanel,
+  (newVal) => {
+    if (newVal == true) {
+      showMore.value = false;
+      hover.value = false;
+      locked.value = false;
+    }
+  },
+);
 </script>
 
 <style scoped lang="scss">

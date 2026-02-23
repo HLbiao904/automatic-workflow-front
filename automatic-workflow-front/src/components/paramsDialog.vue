@@ -7,7 +7,7 @@
     :fullscreen="isFullscreen"
     :close-on-click-modal="false"
     destroy-on-close
-    @closed="renderSplit = false"
+    @closed="handleClose"
   >
     <!-- 顶部工具栏 -->
     <div class="toolbar">
@@ -160,6 +160,7 @@ const emit = defineEmits([
   "update:showParamsDialog",
   "run-before-node",
   "execute-step",
+  "close-params-dialog",
 ]);
 
 const running = ref(false);
@@ -182,6 +183,11 @@ const hasInput = computed(() => {
 const hasOutput = computed(() => {
   return props.outputData && Object.keys(props.outputData).length > 0;
 });
+
+function handleClose() {
+  renderSplit.value = false;
+  emit("close-params-dialog");
+}
 
 async function runBeforeNodes() {
   running.value = true;
