@@ -72,7 +72,14 @@ const hover = ref(false);
 const outputId = "out";
 const showMore = ref(false);
 const locked = ref(false);
-const emit = defineEmits(["add-node"]);
+const emit = defineEmits([
+  "add-node",
+  "start-node",
+  "open-node",
+  "execute-node",
+  "duplicate-node",
+  "replace-node",
+]);
 const nodeRef = ref(null);
 const panelStyle = ref({
   top: "0px",
@@ -190,7 +197,7 @@ function handleAction(type) {
       break;
     }
     case "rename":
-      emit("rename-node", props.id);
+      handleRename();
       break;
     case "execute":
       emit("execute-node", props.id);

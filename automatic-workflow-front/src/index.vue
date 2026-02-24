@@ -24,6 +24,7 @@ import BooleanNode from "./nodes/booleanNode.vue";
 import WhenNode from "./nodes/whenNode.vue";
 import DefaultEdge from "./components/defaultEdge.vue";
 import { compileFlow } from "./tools/compiler.js";
+import { dynamicCompileFlow } from "./tools/dynamicComplier.js";
 import { validateGraph } from "./tools/validate.js";
 // import default controls styles
 import "@vue-flow/controls/dist/style.css";
@@ -199,6 +200,28 @@ function onNodeClick({ node }) {
   showParamsDialog.value = true; // 显示弹窗
   closeMorePanel.value = true; // 关闭更多操作面板
 }
+function handleOpenNode(id) {
+  const node = nodes.value.find((n) => n.id === id);
+  if (!node) return;
+
+  onNodeClick({ node }); // 手动包装成VueFlow格式
+}
+function duplicateNode(id) {
+  const node = nodes.value.find((n) => n.id === id);
+  if (!node) return;
+
+  const newNode = {
+    ...node,
+    id: Date.now().toString(),
+    position: {
+      x: node.position.x + 90,
+      y: node.position.y + 90,
+    },
+  };
+
+  nodes.value.push(newNode);
+  ElMessage.success("复制成功");
+}
 function norm(h) {
   return h ?? "__default__";
 }
@@ -316,6 +339,10 @@ async function generateEL() {
     ElMessage.warning("无可用工作流");
     return;
   }
+
+  console.log(activeNodes);
+  const el = dynamicCompileFlow(activeNodes, edges.value);
+  console.log("动态生成 EL:", el);
 
   try {
     const isValid = validateGraph(activeNodes, edges.value);
@@ -811,6 +838,8 @@ async function executeParamsFlow(id, includeStop = false) {
             <CommonNode
               v-bind="nodeProps"
               @add-node="openDrawer"
+              @open-node="handleOpenNode"
+              @duplicate-node="duplicateNode"
               :closeMorePanel="closeMorePanel"
             />
           </template>
@@ -818,16 +847,36 @@ async function executeParamsFlow(id, includeStop = false) {
             <StartNode v-bind="nodeProps" @add-node="openDrawer" />
           </template>
           <template #node-switch="nodeProps">
-            <SwitchNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
+            <SwitchNode
+              v-bind="nodeProps"
+              :closeMorePanel="closeMorePanel"
+              @open-node="handleOpenNode"
+              @duplicate-node="duplicateNode"
+            />
           </template>
           <template #node-boolean="nodeProps">
-            <BooleanNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
+            <BooleanNode
+              v-bind="nodeProps"
+              :closeMorePanel="closeMorePanel"
+              @open-node="handleOpenNode"
+              @duplicate-node="duplicateNode"
+            />
           </template>
           <template #node-for="nodeProps">
-            <ForNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
+            <ForNode
+              v-bind="nodeProps"
+              :closeMorePanel="closeMorePanel"
+              @open-node="handleOpenNode"
+              @duplicate-node="duplicateNode"
+            />
           </template>
           <template #node-when="nodeProps">
-            <WhenNode v-bind="nodeProps" :closeMorePanel="closeMorePanel" />
+            <WhenNode
+              v-bind="nodeProps"
+              :closeMorePanel="closeMorePanel"
+              @open-node="handleOpenNode"
+              @duplicate-node="duplicateNode"
+            />
           </template>
           <Controls />
           <MiniMap pannable zoomable />

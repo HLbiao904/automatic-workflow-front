@@ -52,7 +52,7 @@ import {
 } from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import MorePanel from "../components/MorePanel.vue";
-const { removeNodes } = useVueFlow();
+const { removeNodes, updateNode } = useVueFlow();
 const hover = ref(false);
 const showMore = ref(false);
 const locked = ref(false);
@@ -66,7 +66,6 @@ function removeNode() {
 }
 const emit = defineEmits([
   "start-node",
-  "rename-node",
   "open-node",
   "execute-node",
   "duplicate-node",
@@ -127,7 +126,7 @@ function handleAction(type) {
       break;
     }
     case "rename":
-      emit("rename-node", props.id);
+      handleRename();
       break;
     case "execute":
       emit("execute-node", props.id);
