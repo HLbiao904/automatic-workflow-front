@@ -24,7 +24,7 @@
       <div class="node-body">
         <img src="../assets/parallel.svg" class="node-icon" />
       </div>
-      <Handle id="in" type="source" :position="Position.Left" />
+      <Handle id="in" type="target" :position="Position.Left" />
       <Handle id="parallel" type="source" :position="Position.Right" />
     </div>
 
