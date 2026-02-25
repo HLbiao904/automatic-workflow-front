@@ -43,7 +43,7 @@ import OverwriteView from "./components/overwrite.vue";
 import PersonView from "./components/personPanel.vue";
 import Chat from "./components/AiChat.vue";
 import VersionPanel from "./components/versionPanel.vue";
-const { project, addEdges, getViewport, setNodes } = useVueFlow();
+const { project, addEdges, getViewport, setNodes, updateNode } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
 const edges = ref([]);
@@ -67,6 +67,8 @@ const currentWorkflowId = ref(
 );
 const nodeRuntimeData = ref({});
 const closeMorePanel = ref(null);
+const replaceNodeId = ref(null);
+const isReplaceNode = ref(false);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -180,7 +182,6 @@ function startDrag(template) {
     document.onmouseup = null;
   };
 }
-
 function onNodeClick({ node }) {
   // 进入参数面板生成节点关系对象,用来判断哪个节点是第一个节点
   relations.value = getRelateNodes();
@@ -221,6 +222,50 @@ function duplicateNode(id) {
 
   nodes.value.push(newNode);
   ElMessage.success("复制成功");
+}
+function clickReplaceNode(node) {
+  if (!replaceNodeId.value) return;
+
+  const index = nodes.value.findIndex((n) => n.id === replaceNodeId.value);
+
+  if (index === -1) {
+    console.error("未找到要替换的节点:", replaceNodeId.value);
+    return;
+  }
+
+  const oldNode = nodes.value[index];
+
+  const newNode = {
+    ...oldNode,
+    type: node.type.toLowerCase(),
+    label: node.label,
+    data: {
+      nodeId: node.nodeId,
+      params:
+        node.params?.map((p) => ({
+          name: p.name,
+          value: p.value ?? "",
+          desc: p.desc ?? "",
+        })) ?? [],
+      description: node.description,
+    },
+  };
+
+  // ⚡ 关键：生成新的数组引用
+  nodes.value = nodes.value.map((n) => (n.id === oldNode.id ? newNode : n));
+
+  // 如果你有 useVueFlow
+  updateNode(oldNode.id, newNode);
+
+  const el = dynamicCompileFlow(nodes.value, edges.value);
+  console.log("替换节点后重新编译:", el);
+
+  replaceNodeId.value = null;
+}
+function handleReplaceNode(oldNodeId) {
+  showNodesDialog.value = true; // 打开节点库选择需要替换的节点
+  replaceNodeId.value = oldNodeId;
+  isReplaceNode.value = true;
 }
 function norm(h) {
   return h ?? "__default__";
@@ -794,7 +839,12 @@ async function executeParamsFlow(id, includeStop = false) {
           ><el-icon><Close /></el-icon
         ></el-button>
       </div>
-      <NodeSearchPanel :nodes="nodeTemplates" @node-drag-start="startDrag" />
+      <NodeSearchPanel
+        :nodes="nodeTemplates"
+        v-model:isReplaceNode="isReplaceNode"
+        @node-drag-start="startDrag"
+        @replace-node="clickReplaceNode"
+      />
     </el-drawer>
 
     <div class="center-panel" ref="flowWrapper">
@@ -840,6 +890,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @add-node="openDrawer"
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
+              @replace-node="handleReplaceNode"
               :closeMorePanel="closeMorePanel"
             />
           </template>
@@ -852,6 +903,7 @@ async function executeParamsFlow(id, includeStop = false) {
               :closeMorePanel="closeMorePanel"
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
+              @replace-node="handleReplaceNode"
             />
           </template>
           <template #node-boolean="nodeProps">
@@ -860,6 +912,7 @@ async function executeParamsFlow(id, includeStop = false) {
               :closeMorePanel="closeMorePanel"
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
+              @replace-node="handleReplaceNode"
             />
           </template>
           <template #node-for="nodeProps">
@@ -868,6 +921,7 @@ async function executeParamsFlow(id, includeStop = false) {
               :closeMorePanel="closeMorePanel"
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
+              @replace-node="handleReplaceNode"
             />
           </template>
           <template #node-when="nodeProps">
@@ -876,6 +930,7 @@ async function executeParamsFlow(id, includeStop = false) {
               :closeMorePanel="closeMorePanel"
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
+              @replace-node="handleReplaceNode"
             />
           </template>
           <Controls />

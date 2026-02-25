@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
-import { Search, Close } from "@element-plus/icons-vue";
+import { Search } from "@element-plus/icons-vue";
 
 /* props */
 const props = defineProps({
@@ -8,10 +8,18 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  isReplaceNode: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 /* emit */
-const emit = defineEmits(["node-drag-start"]);
+const emit = defineEmits([
+  "node-drag-start",
+  "replace-node",
+  "update:isReplaceNode",
+]);
 
 /* state */
 const keyword = ref("");
@@ -77,6 +85,13 @@ watch(keyword, () => {
 function onMouseDown(node) {
   emit("node-drag-start", node);
 }
+
+/* 5️⃣ 替换 */
+function replaceNode(node) {
+  emit("replace-node", node);
+  // 告诉父组件关闭替换模式
+  emit("update:isReplaceNode", false);
+}
 </script>
 
 <template>
@@ -85,13 +100,12 @@ function onMouseDown(node) {
     <el-input
       v-model="keyword"
       clearable
-      size="default"
       placeholder="搜索节点 / 参数 / 描述"
       :prefix-icon="Search"
       class="search-input"
     />
 
-    <!-- 分类 + 节点 -->
+    <!-- 分类 -->
     <el-collapse v-model="activeCategories">
       <el-collapse-item
         v-for="group in filteredGroups"
@@ -103,29 +117,48 @@ function onMouseDown(node) {
             {{ group.categoryLabel }}
           </span>
         </template>
+
+        <!-- 节点列表 -->
         <el-card
           v-for="n in group.nodes"
           :key="n.id"
           shadow="hover"
           class="node-item"
-          @mousedown.prevent="onMouseDown(n)"
         >
-          <div class="node-row">
-            <span class="node-name">{{ n.label }}</span>
-            <span class="node-type">{{ n.type }}</span>
-          </div>
-          <!-- 参数 Tags -->
-          <div class="node-params">
-            <el-tag
-              v-for="p in n.params"
-              :key="p.key"
-              size="small"
-              type="success"
-              effect="light"
-              class="param-tag"
+          <div class="node-container">
+            <!-- 左侧拖拽区域 -->
+            <div class="drag-area" @mousedown.prevent="onMouseDown(n)">⠿</div>
+
+            <!-- 中间内容 -->
+            <div class="node-content">
+              <div class="node-row">
+                <span class="node-name">{{ n.label }}</span>
+                <span class="node-type">{{ n.type }}</span>
+              </div>
+
+              <div class="node-params">
+                <el-tag
+                  v-for="p in n.params"
+                  :key="p.name"
+                  size="small"
+                  type="success"
+                  effect="light"
+                  class="param-tag"
+                >
+                  {{ p.name }}
+                </el-tag>
+              </div>
+            </div>
+
+            <!-- 右侧替换按钮 -->
+            <div
+              v-if="isReplaceNode"
+              class="replace-btn"
+              @mousedown.stop
+              @click.stop="replaceNode(n)"
             >
-              {{ p.name }}
-            </el-tag>
+              替换
+            </div>
           </div>
         </el-card>
       </el-collapse-item>
@@ -144,7 +177,30 @@ function onMouseDown(node) {
 
 .node-item {
   margin-bottom: 6px;
+  user-select: none;
+}
+
+.node-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 拖拽区域 */
+.drag-area {
   cursor: grab;
+  font-size: 16px;
+  padding: 4px 6px;
+  color: #666;
+}
+
+.drag-area:active {
+  cursor: grabbing;
+}
+
+/* 内容区域 */
+.node-content {
+  flex: 1;
 }
 
 .node-row {
@@ -165,9 +221,21 @@ function onMouseDown(node) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 4px;
 }
 
 .param-tag {
   border-radius: 8px;
+}
+
+/* 替换按钮 */
+.replace-btn {
+  font-size: 12px;
+  color: #409eff;
+  cursor: pointer;
+}
+
+.replace-btn:hover {
+  text-decoration: underline;
 }
 </style>
