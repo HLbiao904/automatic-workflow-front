@@ -148,21 +148,56 @@
           <div class="panel">
             <div class="panel-header">输出数据</div>
             <div class="json-box">
-              <template v-if="hasOutput">
-                <vue-json-pretty
-                  :data="outputData"
-                  :deep="3"
-                  :showLineNumber="true"
-                  :collapsedOnClickBrackets="true"
-                />
+              <!-- switch 节点 -->
+              <template v-if="activeNode?.type === 'switch'">
+                <template v-if="Object.keys(branchResult).length">
+                  <el-tabs v-model="activeBranchTab" type="card">
+                    <el-tab-pane
+                      v-for="tab in orderedTabs"
+                      :key="tab.id"
+                      :label="`${tab.label} (${tab.items.length})`"
+                      :name="tab.id"
+                    >
+                      <div class="json-box-inner">
+                        <vue-json-pretty
+                          :data="tab.items"
+                          :deep="3"
+                          :showLineNumber="true"
+                          :collapsedOnClickBrackets="true"
+                        />
+                      </div>
+                    </el-tab-pane>
+                  </el-tabs>
+                </template>
+
+                <template v-else>
+                  <div class="empty-box">
+                    <div class="empty-info">暂无分支输出</div>
+                    <el-button type="primary" @click="executeStep">
+                      执行下一步
+                    </el-button>
+                  </div>
+                </template>
               </template>
+
+              <!-- 普通节点 -->
               <template v-else>
-                <div class="empty-box">
-                  <div class="empty-info">暂无输出数据</div>
-                  <el-button type="primary" @click="executeStep">
-                    执行下一步
-                  </el-button>
-                </div>
+                <template v-if="hasOutput">
+                  <vue-json-pretty
+                    :data="outputData"
+                    :deep="3"
+                    :showLineNumber="true"
+                    :collapsedOnClickBrackets="true"
+                  />
+                </template>
+                <template v-else>
+                  <div class="empty-box">
+                    <div class="empty-info">暂无输出数据</div>
+                    <el-button type="primary" @click="executeStep">
+                      执行下一步
+                    </el-button>
+                  </div>
+                </template>
               </template>
             </div>
           </div>
@@ -213,6 +248,8 @@ const visible = computed({
 });
 
 const switchBranches = reactive([]);
+const branchResult = ref({});
+const activeBranchTab = ref("");
 
 /* ================== 初始化 ================== */
 
@@ -385,12 +422,33 @@ function triggerBranchRebuild() {
     props.activeNode,
   );
 
+  branchResult.value = result;
+
+  // 默认选中第一个分支
+  const first = props.activeNode.data.branches[0];
+  if (first) {
+    activeBranchTab.value = first.id;
+  }
+
   emit("branch-data", {
     nodeId: props.activeNode.id,
     branches: result,
   });
 }
 
+const orderedTabs = computed(() => {
+  if (!props.activeNode?.data?.branches) return [];
+
+  return props.activeNode.data.branches.map((branch, index) => {
+    const isDefault = branch.id === "default";
+
+    return {
+      id: branch.id,
+      label: isDefault ? "Default" : `Output ${index + 1}`,
+      items: branchResult.value[branch.id] || [],
+    };
+  });
+});
 function buildSwitchBranches(rawInput, node) {
   const items = Array.isArray(rawInput) ? rawInput : [rawInput];
   const branches = node.data?.branches || [];
@@ -549,5 +607,9 @@ const hasOutput = computed(
 .default-label {
   font-weight: 500;
   color: #909399;
+}
+.json-box-inner {
+  height: 100%;
+  overflow: auto;
 }
 </style>
