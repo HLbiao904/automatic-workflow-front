@@ -20,23 +20,30 @@
       </div>
     </div>
 
-    <div class="switch-node">
+    <div class="switch-node" :style="{ height: nodeHeight + 'px' }">
       <div class="node-body">
         <img src="../assets/flagSwitch.svg" class="node-icon" />
       </div>
       <Handle id="in" type="target" :position="Position.Left" />
-      <Handle
+      <!-- 右侧分支 -->
+      <div
         v-for="(item, index) in cases"
         :key="item.id"
-        :id="item.id"
-        type="source"
-        :position="Position.Right"
-        class="right-handle"
-        :style="{
-          '--index': index,
-          '--count': cases.length,
-        }"
-      />
+        class="branch-wrapper"
+        :style="{ top: handleTop(index) + 'px' }"
+      >
+        <!-- 显示序号（从0开始） -->
+        <div class="branch-label">
+          {{ index === cases.length - 1 ? "default" : index }}
+        </div>
+
+        <Handle
+          :id="item.id"
+          type="source"
+          :position="Position.Right"
+          class="right-handle"
+        />
+      </div>
     </div>
 
     <div class="node-title">{{ props.label }}</div>
@@ -61,7 +68,16 @@ import {
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import MorePanel from "../components/MorePanel.vue";
 const { removeNodes, updateNode } = useVueFlow();
-const cases = [{ id: "case-1" }, { id: "case-2" }, { id: "default" }];
+// const cases = [{ id: "case-1" }, { id: "case-2" }, { id: "default" }];
+const cases = computed(() => {
+  const list = props.data?.branches ?? [];
+
+  if (!list.length) {
+    return [{ id: `default-${props.id}` }];
+  }
+
+  return list;
+});
 const hover = ref(false);
 const showMore = ref(false);
 const locked = ref(false);
@@ -70,6 +86,26 @@ const panelStyle = ref({
   top: "0px",
   left: "0px",
 });
+
+const spacing = 30; // 每个节点之间的距离
+const minHeight = 100; // 最小高度
+
+const nodeHeight = computed(() => {
+  const count = cases.value.length || 1;
+  const calculated = (count + 1) * spacing;
+  return Math.max(minHeight, calculated);
+});
+
+const handleTop = (index) => {
+  const count = cases.value.length;
+
+  if (count === 1) {
+    return nodeHeight.value / 2;
+  }
+
+  const gap = nodeHeight.value / (count + 1);
+  return gap * (index + 1);
+};
 const emit = defineEmits([
   "start-node",
   "open-node",
@@ -292,10 +328,11 @@ function moreAction() {
     height: 12px;
   }
 }
+/* 
 .right-handle {
   top: calc((var(--index) + 1) * 100% / (var(--count) + 1));
 }
-
+*/
 .action-btn:hover {
   background: #409eff;
   color: #fff;
@@ -310,5 +347,34 @@ function moreAction() {
 .node-icon {
   width: 100%;
   height: 100%;
+}
+.branch-wrapper {
+  position: absolute;
+  right: -8px;
+  display: flex;
+  align-items: center; // ✅ 垂直居中对齐
+  gap: 6px; // 数字和 handle 间距
+}
+
+/* 让 wrapper 的 top 成为“圆心” */
+.branch-wrapper {
+  transform: translateY(-50%);
+}
+
+.branch-label {
+  font-size: 12px;
+  color: #666;
+  min-width: 48px; // 给 default 留空间
+  width: 16px;
+  text-align: right;
+  margin-right: 0px; // 和 handle 拉开距离
+  pointer-events: none; // 防止影响连线
+}
+
+/* 关键：覆盖 VueFlow 默认 transform */
+.right-handle {
+  position: relative !important;
+  top: 0 !important;
+  transform: none !important;
 }
 </style>

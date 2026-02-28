@@ -235,8 +235,16 @@ function clickReplaceNode(node) {
 
   const oldNode = nodes.value[index];
 
+  // 是否需要生成新 id
+  const needNewId = oldNode.type?.toLowerCase() !== "common";
+
+  const newId = needNewId
+    ? `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    : oldNode.id;
+
   const newNode = {
     ...oldNode,
+    id: newId,
     type: node.type.toLowerCase(),
     label: node.label,
     data: {
@@ -250,8 +258,14 @@ function clickReplaceNode(node) {
       description: node.description,
     },
   };
-
-  // ⚡ 关键：生成新的数组引用
+  if (needNewId) {
+    // 删除所有和旧功能节点有关的边
+    edges.value = edges.value.filter(
+      (e) => e.source !== oldNode.id && e.target !== oldNode.id,
+    );
+  }
+  console.log("替换节点:", newNode);
+  //  关键：生成新的数组引用
   nodes.value = nodes.value.map((n) => (n.id === oldNode.id ? newNode : n));
 
   // 如果你有 useVueFlow
@@ -355,7 +369,7 @@ function onConnect(edgesParams) {
     ...edgesParams,
     type: "default",
     markerEnd: MarkerType.ArrowClosed,
-    //data: { label: "123" },// 线label
+    // data: { label: "123" },// 线label
   });
   isDirty.value = true;
 }
@@ -702,6 +716,16 @@ function executeStep({ id }) {
   // 执行下一步
   executeParamsFlow(id, true);
 }
+function branchData({ nodeId, branches }) {
+  // 分支数据
+  console.log("branchData:", nodeId, branches);
+  /*   const arr = [
+    { id: "case-1", label: "条件1" },
+    { id: "case-2", label: "条件2" },
+    { id: "default", label: "默认" },
+  ];
+  nodes.value.find((n) => n.id === nodeId).data.branches = arr; */
+}
 async function executeParamsFlow(id, includeStop = false) {
   console.log(includeStop);
   const currentId = id;
@@ -962,6 +986,7 @@ async function executeParamsFlow(id, includeStop = false) {
       @run-before-node="runBeforeNodes"
       @execute-step="executeStep"
       @close-params-dialog="closeMorePanel = false"
+      @branch-data="branchData"
     />
   </div>
 </template>
