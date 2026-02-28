@@ -726,6 +726,11 @@ function branchData({ nodeId, branches }) {
   ];
   nodes.value.find((n) => n.id === nodeId).data.branches = arr; */
 }
+function handleRemoveRule({ nodeId, handleId }) {
+  edges.value = edges.value.filter(
+    (edge) => !(edge.source === nodeId && edge.sourceHandle === handleId),
+  );
+}
 async function executeParamsFlow(id, includeStop = false) {
   console.log(includeStop);
   const currentId = id;
@@ -987,6 +992,7 @@ async function executeParamsFlow(id, includeStop = false) {
       @execute-step="executeStep"
       @close-params-dialog="closeMorePanel = false"
       @branch-data="branchData"
+      @remove-rule="handleRemoveRule"
     />
   </div>
 </template>

@@ -178,6 +178,7 @@ import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
 import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
+import { useVueFlow } from "@vue-flow/core";
 
 /* ================== props ================== */
 
@@ -196,6 +197,7 @@ const emit = defineEmits([
   "execute-step",
   "close-params-dialog",
   "branch-data",
+  "remove-rule",
 ]);
 
 /* ================== 基础状态 ================== */
@@ -359,7 +361,16 @@ function addRule() {
 }
 
 function removeRule(index) {
-  if (switchBranches[index].key === "default") return;
+  const rule = switchBranches[index];
+  if (rule.id === "default") return;
+
+  // 通知父组件删除该 handle 对应的线
+  emit("remove-rule", {
+    nodeId: props.activeNode.id, // 当前节点 id（非常重要）
+    handleId: rule.id, // 分支 handle id
+  });
+
+  // 再删除本地 rule
   switchBranches.splice(index, 1);
 }
 
