@@ -31,12 +31,14 @@
         :position="Position.Right"
         style="top: 33%"
       />
+      <span class="handle-label handle-true">true</span>
       <Handle
         id="false"
         type="source"
         :position="Position.Right"
         style="top: 66%"
       />
+      <span class="handle-label handle-false">false</span>
     </div>
     <div class="node-title">{{ props.label }}</div>
     <!-- More Panel -->
@@ -302,5 +304,26 @@ function moreAction() {
 .node-icon {
   width: 100%;
   height: 100%;
+}
+.handle-label {
+  position: absolute;
+  right: -45px;
+  font-size: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+
+  z-index: 20; // 提高层级
+  background: #fff; // 防止被线穿过
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.handle-true {
+  top: 33%;
+}
+
+.handle-false {
+  top: 66%;
 }
 </style>
