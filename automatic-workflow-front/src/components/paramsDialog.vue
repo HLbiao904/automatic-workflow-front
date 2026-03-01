@@ -117,6 +117,63 @@
               </div>
             </template>
 
+            <!-- BOOLEAN 条件节点 -->
+            <template v-else-if="activeNode?.type === 'boolean'">
+              <div class="rule-panel">
+                <div class="panel-header">条件配置</div>
+
+                <div class="rule-row">
+                  <!-- 字段 -->
+                  <el-select
+                    v-model="ifCondition.field"
+                    placeholder="选择字段"
+                    size="small"
+                    style="width: 120px"
+                  >
+                    <el-option
+                      v-for="field in availableFields"
+                      :key="field"
+                      :label="field === '$value' ? '整个元素' : field"
+                      :value="field"
+                    />
+                  </el-select>
+
+                  <!-- 运算符 -->
+                  <el-select
+                    v-model="ifCondition.operator"
+                    size="small"
+                    style="width: 100px"
+                  >
+                    <el-option label="等于" value="==" />
+                    <el-option label="不等于" value="!=" />
+                    <el-option label="大于" value=">" />
+                    <el-option label="小于" value="<" />
+                    <el-option label="包含" value="includes" />
+                    <el-option label="为真" value="true" />
+                    <el-option label="为假" value="false" />
+                  </el-select>
+
+                  <!-- 比较值 -->
+                  <el-input
+                    v-model="ifCondition.value"
+                    placeholder="比较值"
+                    size="small"
+                    style="width: 120px"
+                  />
+                </div>
+
+                <div style="margin-top: 12px">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="triggerIfEvaluate"
+                  >
+                    计算 TRUE / FALSE
+                  </el-button>
+                </div>
+              </div>
+            </template>
+
             <!-- 普通参数 -->
             <template v-else>
               <el-form :model="paramsDialogFormData" label-width="110px">
@@ -178,7 +235,49 @@
                   </div>
                 </template>
               </template>
+              <!-- BOOLEAN 节点 -->
+              <template v-else-if="activeNode?.type === 'boolean'">
+                <template v-if="Object.keys(booleanBranchResult).length">
+                  <el-tabs v-model="activeBooleanTab" type="card">
+                    <el-tab-pane
+                      :label="`TRUE (${booleanBranchResult.true?.length || 0})`"
+                      name="true"
+                    >
+                      <div class="json-box-inner">
+                        <vue-json-pretty
+                          :data="booleanBranchResult.true"
+                          :deep="3"
+                          :showLineNumber="true"
+                          :collapsedOnClickBrackets="true"
+                        />
+                      </div>
+                    </el-tab-pane>
 
+                    <el-tab-pane
+                      :label="`FALSE (${booleanBranchResult.false?.length || 0})`"
+                      name="false"
+                    >
+                      <div class="json-box-inner">
+                        <vue-json-pretty
+                          :data="booleanBranchResult.false"
+                          :deep="3"
+                          :showLineNumber="true"
+                          :collapsedOnClickBrackets="true"
+                        />
+                      </div>
+                    </el-tab-pane>
+                  </el-tabs>
+                </template>
+
+                <template v-else>
+                  <div class="empty-box">
+                    <div class="empty-info">暂无分支输出</div>
+                    <el-button type="primary" @click="triggerIfEvaluate">
+                      计算 TRUE / FALSE
+                    </el-button>
+                  </div>
+                </template>
+              </template>
               <!-- 普通节点 -->
               <template v-else>
                 <template v-if="hasOutput">
@@ -241,6 +340,9 @@ const isFullscreen = ref(false);
 const renderSplit = ref(false);
 const isFirstNode = ref(false);
 
+const booleanBranchResult = ref({});
+const activeBooleanTab = ref("true");
+
 const visible = computed({
   get: () => props.showParamsDialog,
   set: (val) => emit("update:showParamsDialog", val),
@@ -250,6 +352,11 @@ const switchBranches = reactive([]);
 const branchResult = ref({});
 const activeBranchTab = ref("");
 
+const ifCondition = reactive({
+  field: "",
+  operator: "==",
+  value: "",
+});
 /* ================== 初始化 ================== */
 
 onMounted(() => {
@@ -288,6 +395,22 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => props.activeNode,
+  (newNode) => {
+    if (newNode?.type === "boolean") {
+      if (!newNode.data.condition) {
+        newNode.data.condition = {
+          field: "",
+          operator: "==",
+          value: "",
+        };
+      }
+      Object.assign(ifCondition, newNode.data.condition);
+    }
+  },
+  { immediate: true },
+);
 /* ================== 规则变动监听 ================== */
 
 watch(
@@ -313,7 +436,6 @@ function tryParseJSON(value, maxDepth = 3) {
       break;
     }
   }
-
   return current;
 }
 // 统一把 props.inputData 转为 JS 对象数组
@@ -452,6 +574,39 @@ function removeRule(index) {
   switchBranches.splice(index, 1);
 }
 
+function triggerIfEvaluate() {
+  const input = normalizedInputData.value;
+  if (!Array.isArray(input)) return;
+
+  const result = {
+    true: [],
+    false: [],
+  };
+
+  input.forEach((item) => {
+    const fieldValue = getFieldValue(item, ifCondition.field);
+
+    const matched = evaluate(
+      fieldValue,
+      ifCondition.operator,
+      ifCondition.value,
+    );
+
+    if (matched) {
+      result.true.push(item);
+    } else {
+      result.false.push(item);
+    }
+  });
+
+  booleanBranchResult.value = result;
+  activeBooleanTab.value = "true";
+
+  emit("branch-data", {
+    nodeId: props.activeNode.id,
+    branches: result,
+  });
+}
 /* ================== 分支计算 ================== */
 
 function triggerBranchRebuild() {
@@ -472,7 +627,6 @@ function triggerBranchRebuild() {
   }
 
   emit("branch-data", {
-    activeNode: props.activeNode,
     nodeId: props.activeNode.id,
     branches: result,
   });

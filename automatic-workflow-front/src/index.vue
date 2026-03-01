@@ -726,7 +726,7 @@ function executeStep({ id }) {
   // 执行下一步
   executeParamsFlow(id, true);
 }
-function branchData({ nodeId, branches, activeNode }) {
+function branchData({ nodeId, branches }) {
   // 分支数据
 
   persistentBranchData.value.nodeId = nodeId;
@@ -743,18 +743,40 @@ function branchData({ nodeId, branches, activeNode }) {
   );
 }
 function handleBranchData(nodeId, branches, edges) {
-  return (
-    Object.keys(branches).find((handleId) => {
-      const hasData =
-        Array.isArray(branches[handleId]) && branches[handleId].length > 0;
+  const handleIds = Object.keys(branches);
 
-      const isConnected = edges.some(
-        (edge) => edge.source === nodeId && edge.sourceHandle === handleId,
-      );
+  // 优先：有数据 + 有连线
+  const matched = handleIds.find((handleId) => {
+    const hasData =
+      Array.isArray(branches[handleId]) && branches[handleId].length > 0;
 
-      return hasData && isConnected;
-    }) || null
+    const isConnected = edges.some(
+      (edge) => edge.source === nodeId && edge.sourceHandle === handleId,
+    );
+
+    return hasData && isConnected;
+  });
+
+  if (matched) return matched;
+
+  // 如果都没数据，但有连线
+
+  // 找出所有已连接的 handle
+  const connectedHandles = handleIds.filter((handleId) =>
+    edges.some(
+      (edge) => edge.source === nodeId && edge.sourceHandle === handleId,
+    ),
   );
+
+  if (connectedHandles.length === 0) return null;
+
+  // 优先 default
+  if (connectedHandles.includes("default")) {
+    return "default";
+  }
+
+  // ④ 否则返回第一个连线的
+  return connectedHandles[0];
 }
 function handleRemoveRule({ nodeId, handleId }) {
   edges.value = edges.value.filter(
