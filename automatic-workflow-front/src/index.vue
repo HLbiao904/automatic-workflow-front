@@ -69,6 +69,7 @@ const nodeRuntimeData = ref({});
 const closeMorePanel = ref(null);
 const replaceNodeId = ref(null);
 const isReplaceNode = ref(false);
+const persistentBranchData = ref({}); // 用于存储分支节点的分支数据，避免切换节点时丢失
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -413,7 +414,16 @@ async function generateEL() {
     const el = compileFlow(activeNodes, edges.value);
     console.log("生成 EL:", el);
     const chainId = Date.now().toString();
-
+    persistentBranchData.value.chainId = chainId; // 存储当前执行的 chainId，分支节点会用到
+    // 调用接口
+    service
+      .post(
+        "api/workflow/saveSwitchBranchKeyToRedis",
+        persistentBranchData.value,
+      )
+      .then((res) => {
+        console.log("分支数据保存结果:", res.data);
+      });
     const relations = getRelateNodes();
     console.log("节点关系:", relations);
 
@@ -716,15 +726,35 @@ function executeStep({ id }) {
   // 执行下一步
   executeParamsFlow(id, true);
 }
-function branchData({ nodeId, branches }) {
+function branchData({ nodeId, branches, activeNode }) {
   // 分支数据
-  console.log("branchData:", nodeId, branches);
-  /*   const arr = [
-    { id: "case-1", label: "条件1" },
-    { id: "case-2", label: "条件2" },
-    { id: "default", label: "默认" },
-  ];
-  nodes.value.find((n) => n.id === nodeId).data.branches = arr; */
+
+  persistentBranchData.value.nodeId = nodeId;
+  persistentBranchData.value.branchKey = handleBranchData(
+    nodeId,
+    branches,
+    edges.value,
+  );
+  console.log(
+    "branchData:",
+    branches,
+    persistentBranchData.value.nodeId,
+    persistentBranchData.value.branchKey,
+  );
+}
+function handleBranchData(nodeId, branches, edges) {
+  return (
+    Object.keys(branches).find((handleId) => {
+      const hasData =
+        Array.isArray(branches[handleId]) && branches[handleId].length > 0;
+
+      const isConnected = edges.some(
+        (edge) => edge.source === nodeId && edge.sourceHandle === handleId,
+      );
+
+      return hasData && isConnected;
+    }) || null
+  );
 }
 function handleRemoveRule({ nodeId, handleId }) {
   edges.value = edges.value.filter(
@@ -979,7 +1009,7 @@ async function executeParamsFlow(id, includeStop = false) {
     </div>
 
     <ParamsDialog
-      v-if="showParamsDialog"
+      v-show="showParamsDialog"
       ref="paramsDialogRef"
       v-model:showParamsDialog="showParamsDialog"
       :paramsDialogFormData="paramsDialogFormData"

@@ -25,7 +25,7 @@
             <div class="json-box">
               <template v-if="hasInput">
                 <vue-json-pretty
-                  :data="inputData"
+                  :data="normalizedInputData"
                   :deep="3"
                   :showLineNumber="true"
                   :collapsedOnClickBrackets="true"
@@ -104,7 +104,6 @@
                       删除
                     </el-button>
                   </template>
-
                   <template v-else>
                     <div class="default-label">默认分支 (default)</div>
                   </template>
@@ -184,7 +183,7 @@
               <template v-else>
                 <template v-if="hasOutput">
                   <vue-json-pretty
-                    :data="outputData"
+                    :data="normalizedOutputData"
                     :deep="3"
                     :showLineNumber="true"
                     :collapsedOnClickBrackets="true"
@@ -222,8 +221,8 @@ const props = defineProps({
   paramsDialogFormData: Object,
   activeNode: Object,
   relations: Object,
-  inputData: { type: Object, default: () => ({}) },
-  outputData: { type: Object, default: () => ({}) },
+  inputData: { type: [Object, String], default: () => ({}) },
+  outputData: { type: [Object, String], default: () => ({}) },
 });
 
 const emit = defineEmits([
@@ -301,38 +300,80 @@ watch(
   },
   { deep: true },
 );
+function tryParseJSON(value, maxDepth = 3) {
+  let current = value;
+  let depth = 0;
+
+  while (typeof current === "string" && depth < maxDepth) {
+    try {
+      const parsed = JSON.parse(current);
+      current = parsed;
+      depth++;
+    } catch {
+      break;
+    }
+  }
+
+  return current;
+}
 // 统一把 props.inputData 转为 JS 对象数组
 const normalizedInputData = computed(() => {
   let data = props.inputData;
 
   if (data == null) return [];
 
-  //  如果是字符串，尝试解析成 JSON
-  if (typeof data === "string") {
-    try {
-      data = JSON.parse(data);
-    } catch (e) {
-      // 解析失败说明它只是普通字符串
-      return [{ _value: data }];
-    }
+  // 先自动解多层 JSON
+  data = tryParseJSON(data);
+
+  // 如果是数组
+  if (Array.isArray(data)) {
+    return data.map((item) => {
+      const parsedItem = tryParseJSON(item);
+
+      if (typeof parsedItem === "object" && parsedItem !== null) {
+        return parsedItem;
+      }
+
+      return { _value: parsedItem };
+    });
   }
 
-  // 对象数组
-  if (Array.isArray(data) && typeof data[0] === "object") {
-    return data;
-  }
-
-  // 单个对象
-  if (!Array.isArray(data) && typeof data === "object") {
+  // 如果是对象
+  if (typeof data === "object" && data !== null) {
     return [data];
   }
 
-  // 普通值数组
+  // 普通值
+  return [{ _value: data }];
+});
+// 统一把 props.outputData 转为 JS 对象数组
+const normalizedOutputData = computed(() => {
+  let data = props.outputData;
+
+  if (data == null) return [];
+
+  // 先自动解多层 JSON
+  data = tryParseJSON(data);
+
+  // 如果是数组
   if (Array.isArray(data)) {
-    return data.map((v) => ({ _value: v }));
+    return data.map((item) => {
+      const parsedItem = tryParseJSON(item);
+
+      if (typeof parsedItem === "object" && parsedItem !== null) {
+        return parsedItem;
+      }
+
+      return { _value: parsedItem };
+    });
   }
 
-  // 单个普通值
+  // 如果是对象
+  if (typeof data === "object" && data !== null) {
+    return [data];
+  }
+
+  // 普通值
   return [{ _value: data }];
 });
 function extractKeys(obj, prefix = "") {
@@ -415,7 +456,7 @@ function removeRule(index) {
 
 function triggerBranchRebuild() {
   if (!props.activeNode || props.activeNode.type !== "switch") return;
-  if (!props.inputData || !Object.keys(props.inputData).length) return;
+  if (!normalizedInputData.value.length) return;
 
   const result = buildSwitchBranches(
     normalizedInputData.value,
@@ -431,6 +472,7 @@ function triggerBranchRebuild() {
   }
 
   emit("branch-data", {
+    activeNode: props.activeNode,
     nodeId: props.activeNode.id,
     branches: result,
   });
@@ -513,7 +555,6 @@ function evaluate(inputValue, operator, compareValue) {
 
     case "includes":
       return String(inputValue).includes(compareValue);
-
     default:
       return false;
   }
