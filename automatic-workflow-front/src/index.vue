@@ -69,7 +69,8 @@ const nodeRuntimeData = ref({});
 const closeMorePanel = ref(null);
 const replaceNodeId = ref(null);
 const isReplaceNode = ref(false);
-const persistentBranchData = ref({}); // 用于存储分支节点的分支数据，避免切换节点时丢失
+const switchBranchData = ref({}); // 用于存储分支节点的分支数据，避免切换节点时丢失
+const booleanBranchData = ref({}); // 用于存储布尔节点的分支数据
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -414,16 +415,7 @@ async function generateEL() {
     const el = compileFlow(activeNodes, edges.value);
     console.log("生成 EL:", el);
     const chainId = Date.now().toString();
-    persistentBranchData.value.chainId = chainId; // 存储当前执行的 chainId，分支节点会用到
-    // 调用接口
-    service
-      .post(
-        "api/workflow/saveSwitchBranchKeyToRedis",
-        persistentBranchData.value,
-      )
-      .then((res) => {
-        console.log("分支数据保存结果:", res.data);
-      });
+
     const relations = getRelateNodes();
     console.log("节点关系:", relations);
 
@@ -726,26 +718,53 @@ function executeStep({ id }) {
   // 执行下一步
   executeParamsFlow(id, true);
 }
-function branchData({ nodeId, branches }) {
+async function handleSwitchBranch({ nodeId, branches }) {
   // 分支数据
-
-  persistentBranchData.value.nodeId = nodeId;
-  persistentBranchData.value.branchKey = handleBranchData(
+  switchBranchData.value.nodeId = nodeId;
+  switchBranchData.value.branchKey = handleBranchData(
     nodeId,
     branches,
     edges.value,
   );
+  switchBranchData.value.chainId = null;
+  // 调用接口
+  await service
+    .post("api/workflow/saveBranchKeyToRedis", switchBranchData.value)
+    .then((res) => {
+      console.log("分支数据保存结果:", res.data);
+    });
   console.log(
-    "branchData:",
+    "switchBranchData:",
     branches,
-    persistentBranchData.value.nodeId,
-    persistentBranchData.value.branchKey,
+    switchBranchData.value.nodeId,
+    switchBranchData.value.branchKey,
   );
 }
-function handleBranchData(nodeId, branches, edges) {
+async function handleBooleanBranch({ nodeId, branches }) {
+  booleanBranchData.value.nodeId = nodeId;
+  booleanBranchData.value.branchKey = handleBranchData(
+    nodeId,
+    branches,
+    edges.value,
+  );
+  booleanBranchData.value.chainId = null;
+  // 调用接口
+  await service
+    .post("api/workflow/saveBranchKeyToRedis", booleanBranchData.value)
+    .then((res) => {
+      console.log("分支数据保存结果:", res.data);
+    });
+  console.log(
+    "booleanBranchData:",
+    branches,
+    booleanBranchData.value.nodeId,
+    booleanBranchData.value.branchKey,
+  );
+}
+function handleBranchData(nodeId, branches, edges, nodeType) {
   const handleIds = Object.keys(branches);
 
-  // 优先：有数据 + 有连线
+  // ① 优先：有数据 + 有连线
   const matched = handleIds.find((handleId) => {
     const hasData =
       Array.isArray(branches[handleId]) && branches[handleId].length > 0;
@@ -759,23 +778,30 @@ function handleBranchData(nodeId, branches, edges) {
 
   if (matched) return matched;
 
-  // 如果都没数据，但有连线
-
-  // 找出所有已连接的 handle
+  // ② 找所有已连接 handle
   const connectedHandles = handleIds.filter((handleId) =>
     edges.some(
       (edge) => edge.source === nodeId && edge.sourceHandle === handleId,
     ),
   );
 
-  if (connectedHandles.length === 0) return null;
+  if (!connectedHandles.length) return null;
 
-  // 优先 default
-  if (connectedHandles.includes("default")) {
-    return "default";
+  // ③ SWITCH 特殊处理
+  if (nodeType === "switch") {
+    if (connectedHandles.includes("default")) {
+      return "default";
+    }
   }
 
-  // ④ 否则返回第一个连线的
+  // ④ BOOLEAN 优先 true
+  if (nodeType === "boolean") {
+    if (connectedHandles.includes("true")) {
+      return "true";
+    }
+  }
+
+  // ⑤ 否则取第一个
   return connectedHandles[0];
 }
 function handleRemoveRule({ nodeId, handleId }) {
@@ -1043,7 +1069,8 @@ async function executeParamsFlow(id, includeStop = false) {
       @run-before-node="runBeforeNodes"
       @execute-step="executeStep"
       @close-params-dialog="closeMorePanel = false"
-      @branch-data="branchData"
+      @switch-branch-data="handleSwitchBranch"
+      @boolean-branch-data="handleBooleanBranch"
       @remove-rule="handleRemoveRule"
     />
   </div>

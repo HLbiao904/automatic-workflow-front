@@ -225,7 +225,6 @@
                     </el-tab-pane>
                   </el-tabs>
                 </template>
-
                 <template v-else>
                   <div class="empty-box">
                     <div class="empty-info">暂无分支输出</div>
@@ -312,6 +311,7 @@ import "splitpanes/dist/splitpanes.css";
 import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 import { useVueFlow } from "@vue-flow/core";
+import { ElMessage } from "element-plus";
 
 /* ================== props ================== */
 
@@ -329,7 +329,8 @@ const emit = defineEmits([
   "run-before-node",
   "execute-step",
   "close-params-dialog",
-  "branch-data",
+  "switch-branch-data",
+  "boolean-branch-data",
   "remove-rule",
 ]);
 
@@ -576,6 +577,13 @@ function removeRule(index) {
 
 function triggerIfEvaluate() {
   const input = normalizedInputData.value;
+  const isEmptyObject =
+    !props.inputData || Object.keys(props.inputData).length === 0;
+
+  if (!input || isEmptyObject) {
+    ElMessage.warning("没有输入数据可供计算");
+    return;
+  }
   if (!Array.isArray(input)) return;
 
   const result = {
@@ -602,7 +610,7 @@ function triggerIfEvaluate() {
   booleanBranchResult.value = result;
   activeBooleanTab.value = "true";
 
-  emit("branch-data", {
+  emit("boolean-branch-data", {
     nodeId: props.activeNode.id,
     branches: result,
   });
@@ -626,7 +634,7 @@ function triggerBranchRebuild() {
     activeBranchTab.value = first.id;
   }
 
-  emit("branch-data", {
+  emit("switch-branch-data", {
     nodeId: props.activeNode.id,
     branches: result,
   });
