@@ -728,11 +728,10 @@ async function handleSwitchBranch({ nodeId, branches }) {
   );
   switchBranchData.value.chainId = null;
   // 调用接口
-  await service
-    .post("api/workflow/saveBranchKeyToRedis", switchBranchData.value)
-    .then((res) => {
-      console.log("分支数据保存结果:", res.data);
-    });
+  await service.post(
+    "api/workflow/saveBranchKeyToRedis",
+    switchBranchData.value,
+  );
   console.log(
     "switchBranchData:",
     branches,
@@ -749,17 +748,30 @@ async function handleBooleanBranch({ nodeId, branches }) {
   );
   booleanBranchData.value.chainId = null;
   // 调用接口
-  await service
-    .post("api/workflow/saveBranchKeyToRedis", booleanBranchData.value)
-    .then((res) => {
-      console.log("分支数据保存结果:", res.data);
-    });
+  await service.post(
+    "api/workflow/saveBranchKeyToRedis",
+    booleanBranchData.value,
+  );
   console.log(
     "booleanBranchData:",
     branches,
     booleanBranchData.value.nodeId,
     booleanBranchData.value.branchKey,
   );
+}
+async function handleForLoopChange({ nodeId, count }) {
+  // loopConfig: { count: number }
+  const node = nodes.value.find((n) => n.id === nodeId);
+  if (!node) return;
+  const loopData = {
+    nodeId,
+    count,
+  };
+  await service.post("api/workflow/saveLoopCountToRedis", loopData);
+  // 更新节点数据
+  // node.data.loop = { count };
+
+  console.log("forLoopConfig:", nodeId, count);
 }
 function handleBranchData(nodeId, branches, edges, nodeType) {
   const handleIds = Object.keys(branches);
@@ -1071,6 +1083,7 @@ async function executeParamsFlow(id, includeStop = false) {
       @close-params-dialog="closeMorePanel = false"
       @switch-branch-data="handleSwitchBranch"
       @boolean-branch-data="handleBooleanBranch"
+      @for-loop-change="handleForLoopChange"
       @remove-rule="handleRemoveRule"
     />
   </div>

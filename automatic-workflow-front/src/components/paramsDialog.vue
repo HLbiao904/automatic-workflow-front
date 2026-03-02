@@ -173,7 +173,23 @@
                 </div>
               </div>
             </template>
+            <!-- FOR 循环节点 -->
+            <template v-else-if="activeNode?.type === 'for'">
+              <div class="rule-panel">
+                <div class="panel-header">循环配置</div>
 
+                <div class="rule-row">
+                  <span style="width: 80px">循环次数</span>
+
+                  <el-input-number
+                    v-model="forConfig.count"
+                    :min="1"
+                    size="small"
+                    style="width: 160px"
+                  />
+                </div>
+              </div>
+            </template>
             <!-- 普通参数 -->
             <template v-else>
               <el-form :model="paramsDialogFormData" label-width="110px">
@@ -277,6 +293,7 @@
                   </div>
                 </template>
               </template>
+
               <!-- 普通节点 -->
               <template v-else>
                 <template v-if="hasOutput">
@@ -332,6 +349,7 @@ const emit = defineEmits([
   "switch-branch-data",
   "boolean-branch-data",
   "remove-rule",
+  "for-loop-change",
 ]);
 
 /* ================== 基础状态 ================== */
@@ -343,6 +361,9 @@ const isFirstNode = ref(false);
 
 const booleanBranchResult = ref({});
 const activeBooleanTab = ref("true");
+const forConfig = reactive({
+  count: 1,
+});
 
 const visible = computed({
   get: () => props.showParamsDialog,
@@ -409,8 +430,31 @@ watch(
       }
       Object.assign(ifCondition, newNode.data.condition);
     }
+    // for 初始化
+    if (newNode?.type === "for") {
+      if (!newNode.data.loop) {
+        newNode.data.loop = {
+          count: 1,
+        };
+      }
+      Object.assign(forConfig, newNode.data.loop);
+    }
   },
   { immediate: true },
+);
+
+watch(
+  () => forConfig.count,
+  (val) => {
+    if (!props.activeNode || props.activeNode.type !== "for") return;
+
+    props.activeNode.data.loop = { count: val };
+
+    emit("for-loop-change", {
+      nodeId: props.activeNode.id,
+      count: val,
+    });
+  },
 );
 /* ================== 规则变动监听 ================== */
 
