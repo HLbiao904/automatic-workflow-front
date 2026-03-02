@@ -765,7 +765,8 @@ async function loadLatestVersion(workflowId) {
   }
 
   edges.value = JSON.parse(version.edgesJson);
-  const parsedNodes = JSON.parse(version.nodesJson);
+  // 编辑界面不显示节点状态，所以需要剥离掉 status 字段
+  const parsedNodes = stripNodeStatus(JSON.parse(version.nodesJson));
   nodes.value = parsedNodes;
 
   isDirty.value = false;
