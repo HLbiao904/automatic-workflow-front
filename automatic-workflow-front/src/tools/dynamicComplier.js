@@ -1,4 +1,4 @@
-export function dynamicCompileFlow(nodes, edges) {
+export function dynamicCompileFlow(nodes, edges, stopNodeId) {
   if (!nodes || nodes.length === 0) {
     throw new Error("流程为空");
   }
@@ -18,16 +18,19 @@ export function dynamicCompileFlow(nodes, edges) {
     nodeMap[node.id] = node;
   });
 
-  // 3️⃣ 找开始节点（没有入边的节点）
+  // 3️⃣ 找开始节点
   const targets = new Set(edges.map((e) => e.target));
   const startNode = nodes.find((n) => !targets.has(n.id));
-
   if (!startNode) {
     throw new Error("未找到开始节点");
   }
 
-  // 4️⃣ 递归编译
   const visited = new Set();
+  let stopReached = false;
+
+  // =========================
+  // 工具函数
+  // =========================
 
   function wrapData(node) {
     const { id, type, data = {} } = node;
@@ -46,7 +49,6 @@ export function dynamicCompileFlow(nodes, edges) {
         const key = p.name;
         const value = p.value;
 
-        //  过滤空值，但保留 0 和 false
         if (
           value === undefined ||
           value === null ||
@@ -64,7 +66,14 @@ export function dynamicCompileFlow(nodes, edges) {
 
     return `${nodeId}.data('${kvPairs.join(",")}')`;
   }
+
+  // =========================
+  // 核心递归
+  // =========================
+
   function compileNode(nodeId) {
+    if (stopReached) return null;
+
     if (visited.has(nodeId)) {
       throw new Error("检测到循环依赖");
     }
@@ -78,16 +87,18 @@ export function dynamicCompileFlow(nodes, edges) {
 
     const children = graph[nodeId] || [];
 
-    // start 节点不输出自身
+    // 🎯 命中 stopNode
+    if (nodeId === stopNodeId) {
+      stopReached = true;
+      return wrapData(node);
+    }
+
+    // start 不输出自身
     if (node.type === "start") {
       if (children.length !== 1) {
         throw new Error("开始节点必须有且仅有一个子节点");
       }
       return compileNode(children[0]);
-    }
-
-    if (!node.data?.nodeId) {
-      throw new Error("节点缺少 nodeId: " + nodeId);
     }
 
     const name = wrapData(node);
@@ -114,18 +125,27 @@ export function dynamicCompileFlow(nodes, edges) {
     }
   }
 
-  // ========= 各类型实现 =========
+  // =========================
+  // 类型实现
+  // =========================
 
   function compileCommon(name, children) {
+    if (stopReached) return name;
+
     if (children.length === 0) {
       return name;
     }
 
     if (children.length === 1) {
-      return `THEN(${name}, ${compileNode(children[0])})`;
+      const child = compileNode(children[0]);
+      if (!child) return name;
+      return `THEN(${name}, ${child})`;
     }
 
-    const childEls = children.map((id) => compileNode(id));
+    const childEls = children.map((id) => compileNode(id)).filter(Boolean);
+
+    if (childEls.length === 0) return name;
+
     return `THEN(${name}, WHEN(${childEls.join(", ")}))`;
   }
 
@@ -134,8 +154,22 @@ export function dynamicCompileFlow(nodes, edges) {
       throw new Error("WHEN 节点必须有子节点");
     }
 
-    const childEls = children.map((id) => compileNode(id));
+    const childEls = children.map((id) => compileNode(id)).filter(Boolean);
+
+    if (childEls.length === 0) return null;
+
     return `WHEN(${childEls.join(", ")})`;
+  }
+
+  function compileIf(name, children) {
+    if (children.length !== 2) {
+      throw new Error("IF 节点必须有两个分支");
+    }
+
+    const trueBranch = compileNode(children[0]);
+    const falseBranch = compileNode(children[1]);
+
+    return `IF(${name}, ${trueBranch}, ${falseBranch})`;
   }
 
   function compileSwitch(name, nodeId) {
@@ -151,12 +185,12 @@ export function dynamicCompileFlow(nodes, edges) {
 
     for (const e of outgoingEdges) {
       const tag = e.sourceHandle;
-
       if (!tag) {
         throw new Error(`SWITCH 分支缺少 sourceHandle: ${e.target}`);
       }
 
       const body = compileNode(e.target);
+      if (!body) continue;
 
       if (tag === "default") {
         if (defaultCase) {
@@ -168,7 +202,6 @@ export function dynamicCompileFlow(nodes, edges) {
           throw new Error(`SWITCH tag 重复: ${tag}`);
         }
         tagSet.add(tag);
-
         cases.push(`${body}.tag('${tag}')`);
       }
     }
@@ -182,26 +215,22 @@ export function dynamicCompileFlow(nodes, edges) {
     return `SWITCH(${name}).to(${caseStr})`;
   }
 
-  function compileIf(name, children) {
-    if (children.length !== 2) {
-      throw new Error("IF 节点必须有两个分支");
-    }
-
-    const trueBranch = compileNode(children[0]);
-    const falseBranch = compileNode(children[1]);
-
-    return `IF(${name}, ${trueBranch}, ${falseBranch})`;
-  }
-
   function compileFor(name, children) {
     if (children.length !== 1) {
       throw new Error("FOR 节点必须有一个循环体");
     }
 
     const body = compileNode(children[0]);
+    if (!body) return name;
+
     return `FOR(${name}).DO(${body})`;
   }
 
-  // 5️⃣ 从开始节点编译
-  return compileNode(startNode.id);
+  // =========================
+  // 开始编译
+  // =========================
+
+  const result = compileNode(startNode.id);
+
+  return result;
 }

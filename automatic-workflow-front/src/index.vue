@@ -283,6 +283,115 @@ function handleReplaceNode(oldNodeId) {
   replaceNodeId.value = oldNodeId;
   isReplaceNode.value = true;
 }
+async function executeNode(nodeId) {
+  // 只取已经连线的节点
+  const connectedNodeIds = new Set(
+    edges.value.flatMap((e) => [e.source, e.target]),
+  );
+  const activeNodes = nodes.value.filter((n) => connectedNodeIds.has(n.id));
+  // const el = dynamicCompileFlow(activeNodes, edges.value, nodeId);
+
+  const isValid = validateGraph(activeNodes, edges.value);
+  console.log(isValid);
+  if (!isValid) {
+    ElMessage.warning("流程不合法");
+    return;
+  }
+  const el = compileFlow(activeNodes, edges.value, {
+    stopAt: new Set([nodeId]),
+    includeStop: true,
+  });
+  const relations = getRelateNodes();
+
+  console.log("动态生成 EL:", el);
+  const chainId = "manual-" + Date.now().toString();
+  // 将执行记录入库
+  const res2 = await service.post("api/workflowExecute/execute", {
+    userId: 1,
+    workflowId: localStorage.getItem("current_workflow_id"),
+    dirty: isDirty.value,
+    nodes: nodes.value,
+    edges: edges.value,
+    triggerType: "MANUAL",
+    status: "RUNNING",
+    duration: null,
+  });
+  const executionId = res2.data.executionId;
+
+  stompClient.subscribe(`/workflow/flow/${chainId}`, (msg) => {
+    const data = JSON.parse(msg.body);
+    const { id, event, payload, type, duration } = data;
+    if (!nodeRuntimeData.value[id]) {
+      nodeRuntimeData.value[id] = {
+        input: null,
+        output: null,
+        logs: [],
+      };
+    }
+    const node = nodeRuntimeData.value[id];
+
+    let status = "idle";
+    if (event === "NODE_START") {
+      status = "running";
+      node.input = payload; // 节点输入数据
+    }
+    if (event === "NODE_SUCCESS") {
+      status = "success";
+      node.output = payload; // 节点执行结果/输出数据
+      const executionDetailNode = buildExecutionDetail({
+        executionId,
+        id,
+        type,
+        status: "success",
+        input: node.input,
+        output: payload,
+        duration,
+      });
+      // 节点详细信息入库
+      service.post(
+        "api/workflowExecute/saveExecuteDetail",
+        executionDetailNode,
+      );
+      console.log("executionDetailNode:", executionDetailNode);
+    }
+    if (event === "NODE_ERROR") {
+      status = "error";
+      const executionDetailNode = buildExecutionDetail({
+        executionId,
+        id,
+        type,
+        status: "error",
+        input: node.input,
+        duration,
+        error: payload,
+      });
+      // 节点详细信息入库
+      service.post(
+        "api/workflowExecute/saveExecuteDetail",
+        executionDetailNode,
+      );
+    }
+    node.logs.push(data);
+    updateNodeStatus(id, status);
+    console.log("Received flow event:", data);
+  });
+  // 执行工作流
+  const res = await service.post("api/workflow/execute", {
+    chainId,
+    el,
+    relations,
+  });
+  const status = res.data.success ? "SUCCESS" : "ERROR";
+  const duration = res.data.duration; // 工作流执行时间
+  // 更新execution状态和运行时间
+  const res3 = await service.put("api/workflowExecute/updateExecution", {
+    executionId,
+    status,
+    duration,
+  });
+
+  isDirty.value = false;
+}
 function norm(h) {
   return h ?? "__default__";
 }
@@ -402,8 +511,6 @@ async function generateEL() {
   }
 
   console.log(activeNodes);
-  const el = dynamicCompileFlow(activeNodes, edges.value);
-  console.log("动态生成 EL:", el);
 
   try {
     const isValid = validateGraph(activeNodes, edges.value);
@@ -1010,6 +1117,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
+              @execute-node="executeNode"
               :closeMorePanel="closeMorePanel"
             />
           </template>
@@ -1023,6 +1131,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
+              @execute-node="executeNode"
             />
           </template>
           <template #node-boolean="nodeProps">
@@ -1032,6 +1141,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
+              @execute-node="executeNode"
             />
           </template>
           <template #node-for="nodeProps">
@@ -1041,6 +1151,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
+              @execute-node="executeNode"
             />
           </template>
           <template #node-when="nodeProps">
@@ -1050,6 +1161,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @open-node="handleOpenNode"
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
+              @execute-node="executeNode"
             />
           </template>
           <Controls />
