@@ -36,18 +36,46 @@ const labelY = computed(() => pathData.value[2]);
 function deleteEdge() {
   removeEdges(props.id);
 }
+
+const edgeStyle = computed(() => {
+  // 优先级：selected > error > success > running > default
+  if (props.selected) {
+    return {
+      stroke: "#409EFF",
+      strokeWidth: 2.5,
+    };
+  }
+
+  switch (props.data?.status) {
+    case "running":
+      return {
+        stroke: "#22c55e",
+        strokeWidth: 2.5,
+        strokeDasharray: "6 3",
+        animation: "dash 1s linear infinite",
+      };
+    case "success":
+      return {
+        stroke: "#22c55e",
+        strokeWidth: 2.5,
+      };
+    case "error":
+      return {
+        stroke: "#ef4444",
+        strokeWidth: 2.5,
+      };
+    default:
+      return {
+        stroke: "#909399",
+        strokeWidth: 2,
+      };
+  }
+});
 </script>
 
 <template>
   <g
-    ><BaseEdge
-      :path="edgePath"
-      :marker-end="markerEnd"
-      :style="{
-        stroke: selected ? '#409EFF' : '#909399',
-        strokeWidth: selected ? 2.5 : 2,
-      }"
-    />
+    ><BaseEdge :path="edgePath" :marker-end="markerEnd" :style="edgeStyle" />
     <EdgeLabelRenderer>
       <div
         class="edge-label-wrapper"
@@ -115,5 +143,10 @@ function deleteEdge() {
 
 .edge-delete:hover {
   background: #f78989;
+}
+@keyframes dash {
+  to {
+    stroke-dashoffset: -9;
+  }
 }
 </style>

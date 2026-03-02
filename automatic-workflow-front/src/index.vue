@@ -184,6 +184,7 @@ function startDrag(template) {
     document.onmouseup = null;
   };
 }
+
 function onNodeClick({ node }) {
   // 进入参数面板生成节点关系对象,用来判断哪个节点是第一个节点
   relations.value = getRelateNodes();
@@ -332,10 +333,12 @@ async function executeNode(nodeId) {
 
     let status = "idle";
     if (event === "NODE_START") {
+      updateEdgeStatusByTarget(id, "active");
       status = "running";
       node.input = payload; // 节点输入数据
     }
     if (event === "NODE_SUCCESS") {
+      updateEdgeStatusByTarget(id, "success");
       status = "success";
       node.output = payload; // 节点执行结果/输出数据
       const executionDetailNode = buildExecutionDetail({
@@ -355,6 +358,7 @@ async function executeNode(nodeId) {
       console.log("executionDetailNode:", executionDetailNode);
     }
     if (event === "NODE_ERROR") {
+      updateEdgeStatusByTarget(id, "error");
       status = "error";
       const executionDetailNode = buildExecutionDetail({
         executionId,
@@ -553,10 +557,12 @@ async function generateEL() {
 
       let status = "idle";
       if (event === "NODE_START") {
+        updateEdgeStatusByTarget(id, "active");
         status = "running";
         node.input = payload; // 节点输入数据
       }
       if (event === "NODE_SUCCESS") {
+        updateEdgeStatusByTarget(id, "success");
         status = "success";
         node.output = payload; // 节点执行结果/输出数据
         const executionDetailNode = buildExecutionDetail({
@@ -576,6 +582,7 @@ async function generateEL() {
         console.log("executionDetailNode:", executionDetailNode);
       }
       if (event === "NODE_ERROR") {
+        updateEdgeStatusByTarget(id, "error");
         status = "error";
         const executionDetailNode = buildExecutionDetail({
           executionId,
@@ -617,6 +624,20 @@ async function generateEL() {
   }
 }
 
+function updateEdgeStatusByTarget(targetNodeId, status) {
+  edges.value = edges.value.map((edge) => {
+    if (edge.target === targetNodeId) {
+      return {
+        ...edge,
+        data: {
+          ...edge.data,
+          status,
+        },
+      };
+    }
+    return edge;
+  });
+}
 function buildExecutionDetail({
   id,
   executionId,
