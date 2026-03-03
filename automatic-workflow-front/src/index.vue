@@ -72,6 +72,7 @@ const isReplaceNode = ref(false);
 const switchBranchData = ref({}); // 用于存储分支节点的分支数据，避免切换节点时丢失
 const booleanBranchData = ref({}); // 用于存储布尔节点的分支数据
 const executionsPanelRef = ref(null);
+const versionsPanelRef = ref(null);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -813,6 +814,8 @@ watch(viewMode, (val) => {
   if (val === "executions") {
     // 通过 ref 调用子组件方法
     executionsPanelRef.value.reload();
+  } else if (val === "versions") {
+    versionsPanelRef.value.reload();
   }
 });
 async function onSave() {
@@ -1227,6 +1230,7 @@ async function executeParamsFlow(id, includeStop = false) {
         <VersionPanel
           v-show="viewMode === 'versions'"
           :workflowId="currentWorkflowId"
+          ref="versionsPanelRef"
         />
       </div>
     </div>
