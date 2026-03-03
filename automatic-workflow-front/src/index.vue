@@ -514,8 +514,6 @@ async function generateEL() {
     return;
   }
 
-  console.log(activeNodes);
-
   try {
     const isValid = validateGraph(activeNodes, edges.value);
     console.log(isValid);
@@ -541,9 +539,10 @@ async function generateEL() {
       status: "RUNNING",
       duration: null,
     });
-    const executionId = res2.data.executionId;
+    const executionId = res2.data.executionResult.executionId;
+    const versionId = res2.data.executionResult.versionId;
 
-    stompClient.subscribe(`/workflow/flow/${chainId}`, (msg) => {
+    stompClient.subscribe(`/workflow/flow/${chainId}`, async (msg) => {
       const data = JSON.parse(msg.body);
       const { id, event, payload, type, duration } = data;
       if (!nodeRuntimeData.value[id]) {
@@ -599,7 +598,18 @@ async function generateEL() {
           executionDetailNode,
         );
       }
+      if (event === "FLOW_FINISH") {
+        // WebSocket推送完成status后,更新nodes和edges
+        const res4 = await service.post("workflow/version/update", {
+          workflowId: Number(localStorage.getItem("current_workflow_id")),
+          versionId,
+          nodes: nodes.value,
+          edges: edges.value,
+        });
+        console.log("更新版本结果:", res4, nodes.value, edges.value);
+      }
       node.logs.push(data);
+      // 更新节点状态
       updateNodeStatus(id, status);
       console.log("Received flow event:", data);
     });
@@ -662,7 +672,7 @@ function buildExecutionDetail({
     runTime: duration,
   };
 }
-// 删除nodes.data下的status属性,避免被持久化
+// 删除nodes.data下的status属性
 function stripNodeStatus(nodes) {
   return nodes.map((n) => {
     const data = { ...(n.data || {}) };
@@ -675,6 +685,17 @@ function stripNodeStatus(nodes) {
   });
 }
 
+function stripEdgeStatus(edges) {
+  return edges.map((e) => {
+    const data = { ...(e.data || {}) };
+    delete data.status;
+
+    return {
+      ...e,
+      data,
+    };
+  });
+}
 function updateNodeStatus(id, status) {
   setNodesFn((nodes) =>
     nodes.map((node) =>
@@ -820,7 +841,7 @@ async function onSave() {
 function saveWorkflow() {
   const payload = {
     workflowId: localStorage.getItem("current_workflow_id"),
-    nodes: stripNodeStatus(nodes.value),
+    nodes: nodes.value,
     edges: edges.value || [],
   };
 

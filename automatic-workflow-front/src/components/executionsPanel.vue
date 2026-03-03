@@ -122,6 +122,8 @@ async function selectExecution(exec) {
       // execNodes.value = normalizeNodes(JSON.parse(res.data.nodesJson) || []);
       execNodes.value = JSON.parse(res.data.nodesJson) || []; // executions回放展示运行状态
       execEdges.value = JSON.parse(res.data.edgesJson) || [];
+
+      console.log("execEdges:", execEdges.value);
     });
 }
 function formatDuration(ms) {
