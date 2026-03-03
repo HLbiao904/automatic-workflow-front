@@ -71,6 +71,7 @@ const replaceNodeId = ref(null);
 const isReplaceNode = ref(false);
 const switchBranchData = ref({}); // 用于存储分支节点的分支数据，避免切换节点时丢失
 const booleanBranchData = ref({}); // 用于存储布尔节点的分支数据
+const executionsPanelRef = ref(null);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -784,7 +785,7 @@ async function loadLatestVersion(workflowId) {
     isDirty.value = false;
     return;
   }
-
+  // 编辑界面不显示线段状态，所以需要剥离掉 status 字段
   edges.value = stripEdgeStatus(JSON.parse(version.edgesJson));
   // 编辑界面不显示节点状态，所以需要剥离掉 status 字段
   const parsedNodes = stripNodeStatus(JSON.parse(version.nodesJson));
@@ -807,7 +808,13 @@ watch(currentWorkflowId, (id) => {
     localStorage.removeItem("current_workflow_id");
   }
 });
-
+// 监听 viewMode 变化，切换到 executions 面板时刷新数据
+watch(viewMode, (val) => {
+  if (val === "executions") {
+    // 通过 ref 调用子组件方法
+    executionsPanelRef.value.reload();
+  }
+});
 async function onSave() {
   if (saving.value || !isDirty.value) return;
   // 只取已经连线的节点
@@ -1215,6 +1222,7 @@ async function executeParamsFlow(id, includeStop = false) {
         <ExecutionsPanel
           v-show="viewMode === 'executions'"
           :workflowId="currentWorkflowId"
+          ref="executionsPanelRef"
         />
         <VersionPanel
           v-show="viewMode === 'versions'"

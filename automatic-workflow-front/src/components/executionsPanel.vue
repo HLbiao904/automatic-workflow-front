@@ -30,7 +30,9 @@ const props = defineProps({
     required: true,
   },
 });
-
+defineExpose({
+  reload: loadExecutions,
+});
 /* ========== execution list ========== */
 const executionDetailNodes = ref([]);
 const executions = ref([]);
@@ -95,6 +97,21 @@ watch(
       });
   },
 );
+async function loadExecutions() {
+  const res = await service.get("api/workflowExecute/list", {
+    params: { workflowId: props.workflowId },
+  });
+
+  executions.value = res.data || [];
+
+  if (executions.value.length > 0) {
+    await selectExecution(executions.value[0]);
+  } else {
+    activeId.value = null;
+    executionDetailNodes.value = [];
+    activeNodeId.value = null;
+  }
+}
 /* ========== helpers ========== */
 function normalizeNodes(nodes) {
   return (nodes || []).map((n) => ({
