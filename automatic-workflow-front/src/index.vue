@@ -602,13 +602,21 @@ async function generateEL() {
       }
       if (event === "FLOW_FINISH") {
         // WebSocket推送完成status后,更新nodes和edges
-        const res4 = await service.post("workflow/version/update", {
+        const res1 = await service.post("workflow/version/update", {
           workflowId: Number(localStorage.getItem("current_workflow_id")),
           versionId,
           nodes: nodes.value,
           edges: edges.value,
         });
-        console.log("更新版本结果:", res4, nodes.value, edges.value);
+        // 记录execution的nodesStatus和edgesStatus,用于执行记录回放展示
+        const nodesStatus = extractNodeStatus(nodes.value);
+        const edgesStatus = extractEdgeStatus(edges.value);
+        const res2 = await service.put("/api/workflowExecute/updateExecution", {
+          executionId,
+          nodesStatus: nodesStatus,
+          edgesStatus: edgesStatus,
+        });
+        console.log("execution更新", res2.data);
       }
       node.logs.push(data);
       // 更新节点状态
@@ -686,7 +694,24 @@ function stripNodeStatus(nodes) {
     };
   });
 }
+// 提取nodes.data下的status属性
+function extractNodeStatus(nodes) {
+  if (!Array.isArray(nodes)) return [];
 
+  return nodes.map((n) => ({
+    id: n.id,
+    status: n?.data?.status ?? null,
+  }));
+}
+// 提取edges.data下的status属性
+function extractEdgeStatus(edges) {
+  if (!Array.isArray(edges)) return [];
+
+  return edges.map((e) => ({
+    id: e.id,
+    status: e?.data?.status ?? null,
+  }));
+}
 function stripEdgeStatus(edges) {
   return edges.map((e) => {
     const data = { ...(e.data || {}) };
