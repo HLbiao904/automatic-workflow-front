@@ -103,7 +103,6 @@ async function loadExecutions() {
   });
 
   executions.value = res.data || [];
-
   if (executions.value.length > 0) {
     await selectExecution(executions.value[0]);
   } else {
@@ -139,7 +138,23 @@ async function selectExecution(exec) {
       // execNodes.value = normalizeNodes(JSON.parse(res.data.nodesJson) || []);
       execNodes.value = JSON.parse(res.data.nodesJson) || []; // executions回放展示运行状态
       execEdges.value = JSON.parse(res.data.edgesJson) || [];
+      handleNodesStatus(exec.nodesStatus);
+      handleEdgesStatus(exec.edgesStatus);
     });
+}
+function handleNodesStatus(nodesStatus) {
+  const nodesStatusObj = JSON.parse(nodesStatus);
+  nodesStatusObj.forEach((ns) => {
+    const n = execNodes.value.find((n) => n.id === ns.id);
+    if (n) n.data.status = ns.status;
+  });
+}
+function handleEdgesStatus(edgesStatus) {
+  const edgesStatusObj = JSON.parse(edgesStatus);
+  edgesStatusObj.forEach((es) => {
+    const e = execEdges.value.find((e) => e.id === es.id);
+    if (e) e.data.status = es.status;
+  });
 }
 function formatDuration(ms) {
   if (ms == null) return "-";
