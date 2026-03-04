@@ -43,6 +43,7 @@ import OverwriteView from "./components/overwrite.vue";
 import PersonView from "./components/personPanel.vue";
 import Chat from "./components/AiChat.vue";
 import VersionPanel from "./components/versionPanel.vue";
+import GlobalSearchDialog from "./components/GlobalSearchDialog.vue";
 const { project, addEdges, getViewport, setNodes, updateNode } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
@@ -73,6 +74,8 @@ const switchBranchData = ref({}); // 用于存储分支节点的分支数据，�
 const booleanBranchData = ref({}); // 用于存储布尔节点的分支数据
 const executionsPanelRef = ref(null);
 const versionsPanelRef = ref(null);
+const searchVisible = ref(false);
+const workflowList = ref([]);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -107,7 +110,11 @@ onMounted(async () => {
     nodeTemplates.value = [...nodeTemplates.value, ...result];
     console.log("Fetched node templates:", nodeTemplates);
   });
-
+  // 获取工作流列表
+  const res = await service.get("/api/workflow/list", {
+    params: { userId: localStorage.getItem("userId") },
+  });
+  workflowList.value = res.data || [];
   // 初始化 STOMP 客户端
   const socket = new SockJS("/ws");
   stompClient = new Client({
@@ -186,7 +193,12 @@ function startDrag(template) {
     document.onmouseup = null;
   };
 }
-
+function addNodeToEditor() {
+  console.log("addNodeToEditor");
+}
+function goToWorkflow() {
+  console.log("goToWorkflow");
+}
 function onNodeClick({ node }) {
   // 进入参数面板生成节点关系对象,用来判断哪个节点是第一个节点
   relations.value = getRelateNodes();
@@ -1065,32 +1077,6 @@ async function executeParamsFlow(id, includeStop = false) {
     relations,
   });
 }
-/* const executions = ref([
-  // 示例数据
-  {
-    id: "1001",
-    status: "SUCCESS",
-    startTime: Date.now() - 60000,
-    endTime: Date.now() - 30000,
-    events: [
-      { event: "NODE_START", timestamp: Date.now() - 59000, nodeId: "1" },
-      { event: "NODE_SUCCESS", timestamp: Date.now() - 58000, nodeId: "1" },
-      { event: "NODE_START", timestamp: Date.now() - 57000, nodeId: "2" },
-      { event: "NODE_SUCCESS", timestamp: Date.now() - 56000, nodeId: "2" },
-    ],
-  },
-  {
-    id: "1002",
-    status: "RUNNING",
-    startTime: Date.now() - 120000,
-    endTime: null,
-    events: [
-      { event: "NODE_START", timestamp: Date.now() - 119000, nodeId: "1" },
-      { event: "NODE_SUCCESS", timestamp: Date.now() - 118000, nodeId: "1" },
-      { event: "NODE_START", timestamp: Date.now() - 117000, nodeId: "2" },
-    ],
-  },
-]); */
 </script>
 
 <template>
@@ -1112,11 +1098,18 @@ async function executeParamsFlow(id, includeStop = false) {
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
         <img class="btn-img" src="./assets/addNode.svg" />
       </button>
-      <button class="icon-btn" type="primary">
+      <button class="icon-btn" type="primary" @click="searchVisible = true">
         <img class="btn-img" src="./assets/searchNode.svg" />
       </button>
     </div>
 
+    <GlobalSearchDialog
+      v-model="searchVisible"
+      :nodes="nodeTemplates"
+      :workflows="workflowList"
+      @add-node="addNodeToEditor"
+      @open-workflow="goToWorkflow"
+    />
     <el-button
       v-if="viewMode == 'editor'"
       class="execute-btn"

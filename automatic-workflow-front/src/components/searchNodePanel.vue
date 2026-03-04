@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { Search } from "@element-plus/icons-vue";
+import commonIcon from "../assets/code-solid-full.svg";
+import switchIcon from "../assets/flagSwitch.svg";
+import forIcon from "../assets/ForNode.svg";
+import whenIcon from "../assets/parallel.svg";
+import booleanIcon from "../assets/flagBoolean.svg";
 
 /* props */
 const props = defineProps({
@@ -92,6 +97,23 @@ function replaceNode(node) {
   // 告诉父组件关闭替换模式
   emit("update:isReplaceNode", false);
 }
+function getNodeIcon(type) {
+  console.log("getNodeIcon", type);
+  switch ((type || "").toUpperCase()) {
+    case "COMMON":
+      return commonIcon;
+    case "SWITCH":
+      return switchIcon;
+    case "FOR":
+      return forIcon;
+    case "WHEN":
+      return whenIcon;
+    case "BOOLEAN":
+      return booleanIcon;
+    default:
+      return commonIcon;
+  }
+}
 </script>
 
 <template>
@@ -131,22 +153,28 @@ function replaceNode(node) {
 
             <!-- 中间内容 -->
             <div class="node-content">
-              <div class="node-row">
-                <span class="node-name">{{ n.label }}</span>
-                <span class="node-type">{{ n.type }}</span>
+              <!-- 左侧图标 -->
+              <div class="node-icon">
+                <img :src="getNodeIcon(n.type)" alt="icon" />
               </div>
+              <div class="node-text">
+                <div class="node-row">
+                  <span class="node-name">{{ n.label }}</span>
+                  <span class="node-type">{{ n.type }}</span>
+                </div>
 
-              <div class="node-params">
-                <el-tag
-                  v-for="p in n.params"
-                  :key="p.name"
-                  size="small"
-                  type="success"
-                  effect="light"
-                  class="param-tag"
-                >
-                  {{ p.name }}
-                </el-tag>
+                <div class="node-params">
+                  <el-tag
+                    v-for="p in n.params"
+                    :key="p.name"
+                    size="small"
+                    type="success"
+                    effect="light"
+                    class="param-tag"
+                  >
+                    {{ p.name }}
+                  </el-tag>
+                </div>
               </div>
             </div>
 
@@ -200,7 +228,28 @@ function replaceNode(node) {
 
 /* 内容区域 */
 .node-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 1;
+}
+
+.node-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.node-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.node-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .node-row {

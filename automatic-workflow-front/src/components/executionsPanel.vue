@@ -283,7 +283,12 @@ function formatTime(ts) {
           <div class="collapse-left">
             <span class="title"> Execution {{ activeExecution.id }} Logs </span>
             <span class="summary">
-              {{ activeExecution.status }}
+              <span
+                class="status"
+                :class="activeExecution.status.toLowerCase()"
+              >
+                {{ activeExecution.status }}
+              </span>
               · {{ formatTime(activeExecution.startTime) }}
             </span>
           </div>
@@ -592,27 +597,6 @@ function formatTime(ts) {
   gap: 8px;
 }
 
-.event-item {
-  display: grid;
-  grid-template-columns: 90px 1fr auto;
-  gap: 10px;
-  font-size: 13px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: #fff;
-  border: 1px solid #ebeef5;
-
-  &.node_start {
-    border-left: 4px solid #409eff;
-  }
-  &.node_success {
-    border-left: 4px solid #67c23a;
-  }
-  &.node_error {
-    border-left: 4px solid #f56c6c;
-  }
-}
-
 .exec-empty {
   flex: 1;
   display: flex;
@@ -672,6 +656,16 @@ function formatTime(ts) {
     .summary {
       font-size: 12px;
       color: #909399;
+
+      .status.success {
+        color: #67c23a;
+      }
+      .status.running {
+        color: #409eff;
+      }
+      .status.error {
+        color: #f56c6c;
+      }
     }
   }
 
