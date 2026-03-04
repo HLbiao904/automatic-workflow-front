@@ -193,11 +193,31 @@ function startDrag(template) {
     document.onmouseup = null;
   };
 }
-function addNodeToEditor() {
-  console.log("addNodeToEditor");
+function addNodeToEditor(node) {
+  nodes.value.push({
+    id: Date.now().toString(),
+    type: node.type.toLowerCase(),
+    label: node.label,
+    position: {
+      x: (node.position?.x ?? 550) + Math.floor(Math.random() * 101) + 50,
+      y: (node.position?.y ?? 320) + Math.floor(Math.random() * 101) + 50,
+    },
+    data: {
+      nodeId: node.nodeId,
+      params: node.params.map((p) => ({
+        name: p.name,
+        value: p.value ?? "",
+        desc: p.desc ?? "",
+      })),
+      description: node.description,
+    },
+  });
 }
-function goToWorkflow() {
-  console.log("goToWorkflow");
+function goToWorkflow(workflow) {
+  workflowName.value = workflow.name;
+  currentWorkflowId.value = workflow.id;
+
+  loadLatestVersion(workflow.id);
 }
 function onNodeClick({ node }) {
   // 进入参数面板生成节点关系对象,用来判断哪个节点是第一个节点
