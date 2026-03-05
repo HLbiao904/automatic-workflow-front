@@ -551,6 +551,41 @@ function getRelateNodes() {
   });
   return relations;
 }
+function validateNodeParams(activeNodes) {
+  if (!Array.isArray(activeNodes)) {
+    return { valid: true };
+  }
+
+  for (const node of activeNodes) {
+    // 1. 开始节点跳过
+    if (!node || node.id === "1") continue;
+
+    const params = node?.data?.params || [];
+
+    for (const p of params) {
+      if (!p.required) continue;
+
+      const v = p.value;
+
+      const isEmpty =
+        v === undefined ||
+        v === null ||
+        v === "" ||
+        (Array.isArray(v) && v.length === 0);
+
+      if (isEmpty) {
+        return {
+          valid: false,
+          nodeId: node.id,
+          param: p.name,
+          message: `${p.desc || p.name}不能为空`,
+        };
+      }
+    }
+  }
+
+  return { valid: true };
+}
 async function generateEL() {
   // 只取已经连线的节点
   const connectedNodeIds = new Set(
@@ -568,6 +603,15 @@ async function generateEL() {
     console.log(isValid);
     if (!isValid) {
       ElMessage.warning("流程不合法");
+      return;
+    }
+    const res1 = validateNodeParams(activeNodes);
+    console.log("参数校验结果:", res1);
+    if (!res1.valid) {
+      nodes.value = stripNodeStatus(activeNodes);
+      edges.value = stripEdgeStatus(edges.value);
+      updateNodeStatus(res1.nodeId, "lack-param");
+      ElMessage.warning(res1.message);
       return;
     }
     const el = compileFlow(activeNodes, edges.value);

@@ -90,6 +90,7 @@ const y = computed(() => `${Math.round(props.position.y)}px`);
 const statusClass = computed(() => {
   return (
     {
+      "lack-param": "node-lack-param",
       running: "node-running",
       success: "node-success",
       error: "node-error",
@@ -386,6 +387,10 @@ watch(
     300% 300%;
 
   animation: borderFlow 1.2s linear infinite;
+}
+.common-node.node-lack-param {
+  border: 2px solid #ff9900;
+  border-radius: 8px;
 }
 
 @keyframes borderFlow {

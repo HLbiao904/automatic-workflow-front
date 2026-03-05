@@ -4,7 +4,7 @@
     <div class="search-bar">
       <el-input
         v-model="keyword"
-        placeholder="搜索文件..."
+        :placeholder="props.param?.desc || '搜索文件...'"
         clearable
         @input="handleInput"
       >
@@ -25,7 +25,7 @@
         v-for="item in results"
         :key="item.path"
         class="result-item"
-        @click="selectPath(item.path)"
+        @click="selectPath(item.full)"
       >
         <el-icon class="file-icon">
           <Document v-if="!item.isFolder" />
@@ -47,7 +47,7 @@ import axios from "axios";
 import { Search, Document, Folder } from "@element-plus/icons-vue";
 
 const emit = defineEmits(["update:modelValue"]);
-
+const props = defineProps(["param"]);
 const keyword = ref("");
 const autoSearch = ref(true);
 const results = ref([]);
@@ -94,10 +94,14 @@ async function searchFile() {
 }
 
 /* 选择路径 */
-function selectPath(path) {
-  keyword.value = path;
+function selectPath(fullPath) {
+  keyword.value = fullPath;
   results.value = [];
-  emit("update:modelValue", path);
+
+  const path1 = fullPath.replace(/\\/g, "\\\\");
+  console.log("selected path:", path1);
+
+  emit("update:modelValue", path1);
 }
 </script>
 

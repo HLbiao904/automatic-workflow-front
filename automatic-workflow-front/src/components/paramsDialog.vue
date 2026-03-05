@@ -192,11 +192,17 @@
             </template>
             <!-- 普通参数 -->
             <template v-else>
-              <el-form :model="paramsDialogFormData" label-width="110px">
+              <el-form
+                ref="paramsFormRef"
+                :model="paramsDialogFormData"
+                label-width="110px"
+              >
                 <el-form-item
                   v-for="p in activeNode?.data?.params || []"
                   :key="p.name"
                   :label="p.name"
+                  :prop="p.name"
+                  :rules="getRule(p)"
                 >
                   <el-select
                     v-if="p.component == 'select'"
@@ -219,7 +225,7 @@
                     v-else-if="p.component == 'input-number'"
                     v-model="p.value"
                     size="normal"
-                    label=""
+                    :label="p.name"
                     :min="1"
                     :max="100"
                     :step="1"
@@ -237,12 +243,14 @@
                     :maxlength="-1"
                     :show-word-limit="false"
                     :autosize="{ minRows: 1, maxRows: 10 }"
+                    :label="p.name"
                     clearable
                   >
                   </el-input>
                   <FilePicker
                     v-else-if="p.component == 'file-path'"
                     v-model="p.value"
+                    :param="p"
                   />
                   <el-input
                     v-else-if="p.component == 'dir-path'"
@@ -253,12 +261,12 @@
                   <el-radio
                     v-else-if="p.component == 'radio'"
                     v-model="p.value"
-                    label="p.desc"
+                    :label="p.name"
                   ></el-radio>
                   <el-checkbox
                     v-else-if="p.component == 'checkbox'"
                     v-model="p.value"
-                    label="p.desc"
+                    :label="p.name"
                     :indeterminate="false"
                   ></el-checkbox>
                   <el-input
@@ -268,7 +276,6 @@
                     clearable
                   />
                 </el-form-item>
-
                 <el-form-item>
                   <el-button
                     type="success"
@@ -399,6 +406,10 @@ import { useVueFlow } from "@vue-flow/core";
 import { ElMessage } from "element-plus";
 import FilePicker from "../components/FilePicker.vue";
 
+const paramsFormRef = ref(null);
+defineExpose({
+  paramsFormRef,
+});
 /* ================== props ================== */
 
 const props = defineProps({
@@ -539,6 +550,32 @@ watch(
   { deep: true },
 );
 
+function getRule(p) {
+  if (!p.required) return [];
+
+  return [
+    {
+      required: true,
+      message: `${p.name}不能为空`,
+      trigger: ["blur", "change"],
+      validator: (rule, value, callback) => {
+        if (p.value === undefined || p.value === null || p.value === "") {
+          callback(new Error(`${p.name}不能为空`));
+        } else {
+          callback();
+        }
+      },
+    },
+  ];
+}
+function validateParams() {
+  paramsFormRef.value.validate((valid) => {
+    if (!valid) {
+      ElMessage.warning("请填写必填参数");
+      return;
+    }
+  });
+}
 function tryParseJSON(value, maxDepth = 3) {
   let current = value;
   let depth = 0;
@@ -852,6 +889,8 @@ function toggleFullscreen() {
 }
 
 function handleClose() {
+  // 校验参数
+  validateParams();
   renderSplit.value = false;
   emit("close-params-dialog");
 }
