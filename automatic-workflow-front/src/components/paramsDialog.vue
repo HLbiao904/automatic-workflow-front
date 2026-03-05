@@ -198,7 +198,75 @@
                   :key="p.name"
                   :label="p.name"
                 >
-                  <el-input v-model="p.value" :placeholder="p.desc" clearable />
+                  <el-select
+                    v-if="p.component == 'select'"
+                    v-model="p.value"
+                    :placeholder="p.desc"
+                    clearable
+                    ><el-option
+                      v-for="item in p.options"
+                      :key="item"
+                      :label="item"
+                      :value="item"
+                  /></el-select>
+
+                  <el-switch
+                    v-else-if="p.component == 'switch'"
+                    v-model="p.value"
+                    clearable
+                  />
+                  <el-input-number
+                    v-else-if="p.component == 'input-number'"
+                    v-model="p.value"
+                    size="normal"
+                    label=""
+                    :min="1"
+                    :max="100"
+                    :step="1"
+                    :controls="true"
+                    controls-position="both"
+                  >
+                  </el-input-number>
+
+                  <el-input
+                    v-else-if="p.component == 'textarea'"
+                    type="text"
+                    :rows="2"
+                    v-model="p.value"
+                    :placeholder="p.desc"
+                    :maxlength="-1"
+                    :show-word-limit="false"
+                    :autosize="{ minRows: 1, maxRows: 10 }"
+                    clearable
+                  >
+                  </el-input>
+                  <FilePicker
+                    v-else-if="p.component == 'file-path'"
+                    v-model="p.value"
+                  />
+                  <el-input
+                    v-else-if="p.component == 'dir-path'"
+                    v-model="p.value"
+                    :placeholder="p.desc"
+                    clearable
+                  />
+                  <el-radio
+                    v-else-if="p.component == 'radio'"
+                    v-model="p.value"
+                    label="p.desc"
+                  ></el-radio>
+                  <el-checkbox
+                    v-else-if="p.component == 'checkbox'"
+                    v-model="p.value"
+                    label="p.desc"
+                    :indeterminate="false"
+                  ></el-checkbox>
+                  <el-input
+                    v-else
+                    v-model="p.value"
+                    :placeholder="p.desc"
+                    clearable
+                  />
                 </el-form-item>
 
                 <el-form-item>
@@ -329,6 +397,7 @@ import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 import { useVueFlow } from "@vue-flow/core";
 import { ElMessage } from "element-plus";
+import FilePicker from "../components/FilePicker.vue";
 
 /* ================== props ================== */
 
@@ -382,6 +451,7 @@ const ifCondition = reactive({
 /* ================== 初始化 ================== */
 
 onMounted(() => {
+  console.log(props.activeNode);
   props.relations?.forEach((obj) => {
     if (obj.curId == props.activeNode?.id && obj.preId == 1) {
       isFirstNode.value = true;
@@ -468,6 +538,7 @@ watch(
   },
   { deep: true },
 );
+
 function tryParseJSON(value, maxDepth = 3) {
   let current = value;
   let depth = 0;

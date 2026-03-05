@@ -185,6 +185,11 @@ function startDrag(template) {
           name: p.name,
           value: p.value ?? "",
           desc: p.desc ?? "",
+          type: p.type ?? "",
+          component: p.component ?? "",
+          required: p.required ?? false,
+          options: p.options ?? [],
+          defaultValue: p.defaultValue ?? null,
         })),
         description: template.description,
       },
@@ -208,6 +213,11 @@ function addNodeToEditor(node) {
         name: p.name,
         value: p.value ?? "",
         desc: p.desc ?? "",
+        type: p.type ?? "",
+        component: p.component ?? "",
+        required: p.required ?? false,
+        options: p.options ?? [],
+        defaultValue: p.defaultValue ?? null,
       })),
       description: node.description,
     },
@@ -291,6 +301,11 @@ function clickReplaceNode(node) {
           name: p.name,
           value: p.value ?? "",
           desc: p.desc ?? "",
+          type: p.type ?? "",
+          component: p.component ?? "",
+          required: p.required ?? false,
+          options: p.options ?? [],
+          defaultValue: p.defaultValue ?? null,
         })) ?? [],
       description: node.description,
     },
@@ -1209,6 +1224,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
               @execute-node="executeNode"
+              @start-node="executeNode"
               :closeMorePanel="closeMorePanel"
             />
           </template>
@@ -1223,6 +1239,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
               @execute-node="executeNode"
+              @start-node="executeNode"
             />
           </template>
           <template #node-boolean="nodeProps">
@@ -1233,6 +1250,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
               @execute-node="executeNode"
+              @start-node="executeNode"
             />
           </template>
           <template #node-for="nodeProps">
@@ -1243,6 +1261,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
               @execute-node="executeNode"
+              @start-node="executeNode"
             />
           </template>
           <template #node-when="nodeProps">
@@ -1253,6 +1272,7 @@ async function executeParamsFlow(id, includeStop = false) {
               @duplicate-node="duplicateNode"
               @replace-node="handleReplaceNode"
               @execute-node="executeNode"
+              @start-node="executeNode"
             />
           </template>
           <Controls />

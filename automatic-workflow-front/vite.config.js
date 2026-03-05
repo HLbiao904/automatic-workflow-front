@@ -31,6 +31,11 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+      "/everything": {
+        target: "http://127.0.0.1:8888",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/everything/, ""),
+      },
     },
   },
   resolve: {
