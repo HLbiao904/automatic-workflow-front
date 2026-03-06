@@ -553,11 +553,13 @@ function getRelateNodes() {
 }
 function validateNodeParams(activeNodes) {
   if (!Array.isArray(activeNodes)) {
-    return { valid: true };
+    return { valid: true, nodeIds: [] };
   }
 
+  const nodeIds = [];
+  const messages = [];
+
   for (const node of activeNodes) {
-    // 1. 开始节点跳过
     if (!node || node.id === "1") continue;
 
     const params = node?.data?.params || [];
@@ -574,17 +576,18 @@ function validateNodeParams(activeNodes) {
         (Array.isArray(v) && v.length === 0);
 
       if (isEmpty) {
-        return {
-          valid: false,
-          nodeId: node.id,
-          param: p.name,
-          message: `${p.desc || p.name}不能为空`,
-        };
+        nodeIds.push(node.id);
+        messages.push(`${p.desc || p.name}不能为空`);
+        break; // 一个节点只记录一次
       }
     }
   }
 
-  return { valid: true };
+  return {
+    valid: nodeIds.length === 0,
+    nodeIds,
+    message: messages[0], // 用第一个提示
+  };
 }
 async function generateEL() {
   // 只取已经连线的节点
@@ -605,12 +608,16 @@ async function generateEL() {
       ElMessage.warning("流程不合法");
       return;
     }
+    // 工作流参数校验
     const res1 = validateNodeParams(activeNodes);
-    console.log("参数校验结果:", res1);
     if (!res1.valid) {
-      nodes.value = stripNodeStatus(activeNodes);
+      // 节点缺少参数,重置状态
+      nodes.value = stripNodeStatus(nodes.value);
+      // 节点缺少参数,重置edges状态
       edges.value = stripEdgeStatus(edges.value);
-      updateNodeStatus(res1.nodeId, "lack-param");
+      res1.nodeIds.forEach((id) => {
+        updateNodeStatus(id, "lack-param");
+      });
       ElMessage.warning(res1.message);
       return;
     }
@@ -722,6 +729,9 @@ async function generateEL() {
     });
     const status = res.data.success ? "SUCCESS" : "ERROR";
     const duration = res.data.duration; // 工作流执行时间
+    if (status == "SUCCESS") {
+      ElMessage.success("工作流执行成功");
+    }
     // 更新execution状态和运行时间
     const res3 = await service.put("api/workflowExecute/updateExecution", {
       executionId,
@@ -775,15 +785,12 @@ function buildExecutionDetail({
 }
 // 删除nodes.data下的status属性
 function stripNodeStatus(nodes) {
-  return nodes.map((n) => {
-    const data = { ...(n.data || {}) };
-    delete data.status;
-
-    return {
-      ...n,
-      data,
-    };
+  nodes.forEach((n) => {
+    if (n.data && n.data.status) {
+      delete n.data.status;
+    }
   });
+  return nodes;
 }
 // 提取nodes.data下的status属性
 function extractNodeStatus(nodes) {

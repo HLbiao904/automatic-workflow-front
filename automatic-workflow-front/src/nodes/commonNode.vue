@@ -22,6 +22,12 @@
 
     <div :class="['common-node', statusClass]">
       <div class="node-body">
+        <div class="warning" v-if="statusClass == 'node-lack-param'">
+          <img class="warning-icon" src="../assets/warning.svg" /><span
+            class="tip"
+            >缺少参数</span
+          >
+        </div>
         <img src="../assets/code-solid-full.svg" class="node-icon" />
       </div>
       <Handle
@@ -278,6 +284,26 @@ watch(
   border: 2px solid #dcdcdc;
   background: #fff;
   font-size: 13px;
+  .warning {
+    width: 100%;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 2px;
+    .warning-icon {
+      width: auto;
+      height: 80%;
+    }
+    .tip {
+      margin-left: 4px;
+      font-size: 12px;
+      color: #ff9900;
+    }
+  }
 }
 
 .node-title {
