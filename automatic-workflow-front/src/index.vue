@@ -910,9 +910,11 @@ async function loadLatestVersion(workflowId) {
     return;
   }
   // 编辑界面不显示线段状态，所以需要剥离掉 status 字段
-  edges.value = stripEdgeStatus(JSON.parse(version.edgesJson));
+  // edges.value = stripEdgeStatus(JSON.parse(version.edgesJson));
+  edges.value = JSON.parse(version.edgesJson);
   // 编辑界面不显示节点状态，所以需要剥离掉 status 字段
-  const parsedNodes = stripNodeStatus(JSON.parse(version.nodesJson));
+  // const parsedNodes = stripNodeStatus(JSON.parse(version.nodesJson));
+  const parsedNodes = JSON.parse(version.nodesJson);
   nodes.value = parsedNodes;
 
   isDirty.value = false;

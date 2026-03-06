@@ -4,6 +4,9 @@ import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
 import { Controls } from "@vue-flow/controls";
 import { MiniMap } from "@vue-flow/minimap";
+import VueJsonPretty from "vue-json-pretty";
+import "vue-json-pretty/lib/styles.css";
+import MonacoEditor from "../components/MonacoJsonViewer.vue";
 import service from "../service/index.js";
 import StartNode from "../nodes/startNode.vue";
 import CommonNode from "../nodes/commonNode.vue";
@@ -138,7 +141,9 @@ async function selectExecution(exec) {
       // execNodes.value = normalizeNodes(JSON.parse(res.data.nodesJson) || []);
       execNodes.value = JSON.parse(res.data.nodesJson) || []; // executions回放展示运行状态
       execEdges.value = JSON.parse(res.data.edgesJson) || [];
+      // 处理该execution节点状态,渲染节点状态
       handleNodesStatus(exec.nodesStatus);
+      // 处理该execution线段状态,渲染线段状态
       handleEdgesStatus(exec.edgesStatus);
     });
 }
@@ -368,22 +373,40 @@ function formatTime(ts) {
                 <!-- 单独 Input -->
                 <div v-if="viewMode === 'input'" class="io-block">
                   <div class="io-title">Input</div>
-                  <json-viewer
-                    :value="safeParse(activeNodeEvent.inputData)"
-                    :expanded="true"
-                    :copyable="true"
-                    boxed
+                  <MonacoJsonViewer
+                    :modelValue="
+                      JSON.stringify(
+                        safeParse(activeNodeEvent.inputData),
+                        null,
+                        2,
+                      )
+                    "
+                    language="json"
+                    height="300px"
+                    theme="vs"
                   />
                 </div>
 
                 <!-- 单独 Output -->
                 <div v-if="viewMode === 'output'" class="io-block">
                   <div class="io-title">Output</div>
-                  <json-viewer
-                    :value="safeParse(activeNodeEvent.outputData)"
-                    :expanded="true"
-                    :copyable="true"
-                    boxed
+                  <!-- <VueJsonPretty
+                    :data="safeParse(activeNodeEvent.outputData)"
+                    :deep="2"
+                    showLength
+                    showLine
+                  /> -->
+                  <MonacoJsonViewer
+                    :modelValue="
+                      JSON.stringify(
+                        safeParse(activeNodeEvent.inputData),
+                        null,
+                        2,
+                      )
+                    "
+                    language="json"
+                    height="300px"
+                    theme="vs"
                   />
                 </div>
 
@@ -391,21 +414,39 @@ function formatTime(ts) {
                 <div v-if="viewMode === 'both'" class="both-container">
                   <div class="io-block">
                     <div class="io-title">Input</div>
-                    <json-viewer
+                    <!--                     <json-viewer
                       :value="safeParse(activeNodeEvent.inputData)"
                       :expanded="true"
                       :copyable="true"
                       boxed
+                    /> -->
+                    <MonacoJsonViewer
+                      :modelValue="
+                        JSON.stringify(
+                          safeParse(activeNodeEvent.inputData),
+                          null,
+                          2,
+                        )
+                      "
+                      language="json"
+                      height="300px"
+                      theme="vs"
                     />
                   </div>
 
                   <div class="io-block">
                     <div class="io-title">Output</div>
-                    <json-viewer
-                      :value="safeParse(activeNodeEvent.outputData)"
-                      :expanded="true"
-                      :copyable="true"
-                      boxed
+                    <MonacoJsonViewer
+                      :modelValue="
+                        JSON.stringify(
+                          safeParse(activeNodeEvent.inputData),
+                          null,
+                          2,
+                        )
+                      "
+                      language="json"
+                      height="300px"
+                      theme="vs"
                     />
                   </div>
                 </div>
@@ -480,9 +521,8 @@ function formatTime(ts) {
   .time {
     font-size: 12px;
     color: #909399;
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
 
     background: transparent;
   }
@@ -540,9 +580,8 @@ function formatTime(ts) {
   .time {
     font-size: 12px;
     color: #909399;
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
 
     background: transparent;
   }
@@ -830,15 +869,14 @@ function formatTime(ts) {
 .node-json {
   flex: 1;
   overflow: auto;
-  padding: 14px;
-  background: #1e1e1e;
+  padding: 4px;
+  // background: #1e1e1e;
   color: #d4d4d4;
 
   pre {
     margin: 0;
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
     font-size: 13px;
     line-height: 1.5;
     white-space: pre-wrap;
@@ -868,16 +906,16 @@ function formatTime(ts) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #1e1e1e;
+  // background: #1e1e1e;
   border-radius: 8px;
-  padding: 12px;
+  padding: 4px;
   overflow: auto;
 }
 
 .io-title {
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
   color: #999;
 }
 

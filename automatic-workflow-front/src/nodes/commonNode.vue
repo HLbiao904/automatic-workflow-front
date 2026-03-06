@@ -28,6 +28,12 @@
             >缺少参数</span
           >
         </div>
+        <div class="success" v-if="statusClass == 'node-success'">
+          <img class="success-icon" src="../assets/success.svg" />
+        </div>
+        <div class="error" v-if="statusClass == 'node-error'">
+          <img class="error-icon" src="../assets/error.svg" />
+        </div>
         <img src="../assets/code-solid-full.svg" class="node-icon" />
       </div>
       <Handle
@@ -302,6 +308,28 @@ watch(
       margin-left: 4px;
       font-size: 12px;
       color: #ff9900;
+    }
+  }
+  .success {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 16px;
+    height: 16px;
+    .success-icon {
+      width: 100%;
+      height: 100%;
+    }
+  }
+  .error {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 16px;
+    height: 16px;
+    .error-icon {
+      width: 100%;
+      height: 100%;
     }
   }
 }
