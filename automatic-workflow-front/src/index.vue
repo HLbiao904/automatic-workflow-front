@@ -347,6 +347,20 @@ async function executeNode(nodeId) {
     ElMessage.warning("流程不合法");
     return;
   }
+
+  // 工作流参数校验
+  const res1 = validateNodeParams(activeNodes);
+  if (!res1.valid) {
+    // 节点缺少参数,重置状态
+    nodes.value = stripNodeStatus(nodes.value);
+    // 节点缺少参数,重置edges状态
+    edges.value = stripEdgeStatus(edges.value);
+    res1.nodeIds.forEach((id) => {
+      updateNodeStatus(id, "lack-param");
+    });
+    ElMessage.warning(res1.message);
+    return;
+  }
   const el = compileFlow(activeNodes, edges.value, {
     stopAt: new Set([nodeId]),
     includeStop: true,
@@ -621,6 +635,9 @@ async function generateEL() {
       ElMessage.warning(res1.message);
       return;
     }
+    // 每次执行工作流重置nodes和edges状态
+    nodes.value = stripNodeStatus(nodes.value);
+    edges.value = stripEdgeStatus(edges.value);
     const el = compileFlow(activeNodes, edges.value);
     console.log("生成 EL:", el);
     const chainId = Date.now().toString();
@@ -1107,63 +1124,96 @@ function handleRemoveRule({ nodeId, handleId }) {
   );
 }
 async function executeParamsFlow(id, includeStop = false) {
-  console.log(includeStop);
   const currentId = id;
+
+  // 清空运行时数据
+  nodeRuntimeData.value = {};
+
+  // 找到所有参与节点上
   const connectedNodeIds = new Set(
     edges.value.flatMap((e) => [e.source, e.target]),
   );
+
   const activeNodes = nodes.value.filter((n) => connectedNodeIds.has(n.id));
+
+  // 校验流程
   const isValid = validateGraph(activeNodes, edges.value);
   if (!isValid) {
     ElMessage.warning("流程不合法");
     return;
   }
+
+  // 编译EL
   const el = compileFlow(activeNodes, edges.value, {
     stopAt: new Set([id]),
     includeStop,
   });
+
   console.log("生成 EL:", el);
+
   const chainId = Date.now().toString();
 
   const relations = getRelateNodes();
+
+  // websocket监听
   stompClient.subscribe(`/workflow/flow/${chainId}`, (msg) => {
     const data = JSON.parse(msg.body);
-    const { id, event, payload } = data;
-    if (!nodeRuntimeData.value[id]) {
-      nodeRuntimeData.value[id] = {
+
+    const { id: nodeId, event, payload } = data;
+
+    // 初始化节点runtime
+    if (!nodeRuntimeData.value[nodeId]) {
+      nodeRuntimeData.value[nodeId] = {
         input: null,
         output: null,
         logs: [],
       };
     }
-    if (includeStop == false) {
-      nodeRuntimeData.value[currentId] = {
-        input: null,
-        output: null,
-        logs: [],
-      };
-    }
-    const node = nodeRuntimeData.value[id];
+
+    const node = nodeRuntimeData.value[nodeId];
+
+    // 节点开始
     if (event === "NODE_START") {
-      node.input = payload; // 节点入参
+      node.input = payload;
     }
+
+    // 节点成功
     if (event === "NODE_SUCCESS") {
-      node.output = payload; // 节点执行结果
-      if (includeStop == false) {
+      node.output = payload;
+
+      // 如果只是执行上游
+      // 把最后结果传给当前节点input
+      if (!includeStop && nodeId !== currentId) {
+        if (!nodeRuntimeData.value[currentId]) {
+          nodeRuntimeData.value[currentId] = {
+            input: null,
+            output: null,
+            logs: [],
+          };
+        }
+
         nodeRuntimeData.value[currentId].input = payload;
       }
     }
+
+    // 节点异常
     if (event === "NODE_ERROR") {
+      node.error = payload;
     }
+
     node.logs.push(data);
+
     console.log("Received flow event:", data);
   });
-  // 执行工作流
+
+  // 执行流程
   const res = await service.post("api/workflow/execute", {
     chainId,
     el,
     relations,
   });
+
+  return res;
 }
 </script>
 

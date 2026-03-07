@@ -795,7 +795,7 @@ function formatTime(ts) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  padding: 6px 14px;
   border-bottom: 1px solid #ebeef5;
   background: #fafafa;
 

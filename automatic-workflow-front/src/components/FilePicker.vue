@@ -42,18 +42,26 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import axios from "axios";
 import { Search, Document, Folder } from "@element-plus/icons-vue";
 
 const emit = defineEmits(["update:modelValue"]);
-const props = defineProps(["param"]);
-const keyword = ref("");
+const props = defineProps({
+  modelValue: String,
+  param: Object,
+});
+const keyword = ref(props.modelValue || "");
 const autoSearch = ref(true);
 const results = ref([]);
 
 let timer = null;
-
+watch(
+  () => props.modelValue,
+  (v) => {
+    keyword.value = v || "";
+  },
+);
 /* 防抖输入 */
 function handleInput() {
   if (!autoSearch.value) return;

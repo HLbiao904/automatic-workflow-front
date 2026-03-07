@@ -252,6 +252,12 @@
                     v-model="p.value"
                     :param="p"
                   />
+                  <JsonEditorVue
+                    v-else-if="p.component == 'json-editor'"
+                    v-model="p.value"
+                    :mode="'code'"
+                    style="height: 200px"
+                  />
                   <el-input
                     v-else-if="p.component == 'dir-path'"
                     v-model="p.value"
@@ -344,7 +350,9 @@
                     </el-tab-pane>
 
                     <el-tab-pane
-                      :label="`FALSE (${booleanBranchResult.false?.length || 0})`"
+                      :label="`FALSE (${
+                        booleanBranchResult.false?.length || 0
+                      })`"
                       name="false"
                     >
                       <div class="json-box-inner">
@@ -405,6 +413,8 @@ import "vue-json-pretty/lib/styles.css";
 import { useVueFlow } from "@vue-flow/core";
 import { ElMessage } from "element-plus";
 import FilePicker from "../components/FilePicker.vue";
+import JsonEditorVue from "json-editor-vue";
+import "vanilla-jsoneditor/themes/jse-theme-dark.css";
 
 const paramsFormRef = ref(null);
 defineExpose({
@@ -462,7 +472,6 @@ const ifCondition = reactive({
 /* ================== 初始化 ================== */
 
 onMounted(() => {
-  console.log(props.activeNode);
   props.relations?.forEach((obj) => {
     if (obj.curId == props.activeNode?.id && obj.preId == 1) {
       isFirstNode.value = true;
@@ -889,10 +898,12 @@ function toggleFullscreen() {
 }
 
 function handleClose() {
-  // 校验参数
-  validateParams();
-  renderSplit.value = false;
-  emit("close-params-dialog");
+  if (props.activeNode.type == "common") {
+    // 校验参数
+    validateParams();
+    renderSplit.value = false;
+    emit("close-params-dialog");
+  }
 }
 
 watch(
