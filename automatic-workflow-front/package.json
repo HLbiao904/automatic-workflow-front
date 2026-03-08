@@ -21,6 +21,7 @@
     "@vue-flow/minimap": "^1.5.4",
     "@vue-flow/node-toolbar": "^1.1.1",
     "axios": "^1.13.2",
+    "dagre": "^0.8.5",
     "echarts": "^6.0.0",
     "element-plus": "^2.13.1",
     "github-markdown-css": "^5.9.0",

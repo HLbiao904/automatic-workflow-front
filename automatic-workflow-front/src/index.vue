@@ -12,7 +12,7 @@ import { Background } from "@vue-flow/background";
 import { MiniMap } from "@vue-flow/minimap";
 import { useVueFlow, MarkerType, VueFlow } from "@vue-flow/core";
 import service from "./service/index.js";
-import { Controls } from "@vue-flow/controls";
+import { Controls, ControlButton } from "@vue-flow/controls";
 
 // these components are only shown as examples of how to use a custom node or edge
 // you can find many examples of how to create these custom components in the examples page of the docs
@@ -26,6 +26,7 @@ import DefaultEdge from "./components/defaultEdge.vue";
 import { compileFlow } from "./tools/compiler.js";
 import { dynamicCompileFlow } from "./tools/dynamicComplier.js";
 import { validateGraph } from "./tools/validate.js";
+import layoutGraph from "./tools/layoutGraph.js";
 // import default controls styles
 import "@vue-flow/controls/dist/style.css";
 
@@ -45,7 +46,15 @@ import Chat from "./components/AiChat.vue";
 import VersionPanel from "./components/versionPanel.vue";
 import GlobalSearchDialog from "./components/GlobalSearchDialog.vue";
 import Dashboard from "./components/Dashboard.vue";
-const { project, addEdges, getViewport, setNodes, updateNode } = useVueFlow();
+const {
+  project,
+  addEdges,
+  getViewport,
+  setNodes,
+  updateNode,
+  fitView,
+  viewportInitialized,
+} = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
 const edges = ref([]);
@@ -1219,6 +1228,14 @@ async function executeParamsFlow(id, includeStop = false) {
 
   return res;
 }
+const autoLayout = async (direction) => {
+  nodes.value = layoutGraph(nodes.value, edges.value, direction);
+  await nextTick();
+
+  if (viewportInitialized) {
+    fitView({ padding: 0.3 });
+  }
+};
 </script>
 
 <template>
@@ -1390,7 +1407,20 @@ async function executeParamsFlow(id, includeStop = false) {
               @start-node="executeNode"
             />
           </template>
-          <Controls />
+          <Controls>
+            <ControlButton title="Auto Layout" @click="autoLayout('LR')">
+              ⚡
+            </ControlButton>
+            <!-- Vertical -->
+            <ControlButton title="Vertical Layout" @click="autoLayout('TB')">
+              ⬇
+            </ControlButton>
+
+            <!-- Horizontal -->
+            <ControlButton title="Horizontal Layout" @click="autoLayout('LR')">
+              ➡
+            </ControlButton>
+          </Controls>
           <MiniMap pannable zoomable />
           <Background pattern-color="#aaa" :gap="16" variant="dots" />
         </VueFlow>

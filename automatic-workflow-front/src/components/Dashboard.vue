@@ -1,28 +1,28 @@
 <template>
   <div class="dashboard">
-    <h1>Workflow Dashboard</h1>
+    <h1>工作流仪表盘</h1>
 
     <!-- 统计卡片 -->
 
     <div class="cards">
       <div class="card">
-        <h3>Total Runs</h3>
+        <h3>总运行数</h3>
         <p>{{ overview.totalRuns }}</p>
       </div>
 
       <div class="card success">
-        <h3>Success</h3>
+        <h3>成功</h3>
         <p>{{ overview.successCount }}</p>
       </div>
 
       <div class="card error">
-        <h3>Error</h3>
+        <h3>失败</h3>
         <p>{{ overview.errorCount }}</p>
       </div>
 
       <div class="card">
-        <h3>Avg Duration</h3>
-        <p>{{ overview.avgDuration }}</p>
+        <h3>平均运行时间</h3>
+        <p>{{ Math.floor(overview.avgDuration) }}ms</p>
       </div>
     </div>
 
@@ -42,7 +42,7 @@
 
     <!-- 最近执行 -->
 
-    <h2 class="section-title">Recent Execution</h2>
+    <h2 class="section-title">最近执行</h2>
 
     <div class="table-wrapper">
       <table class="table">
@@ -129,7 +129,7 @@ function initTrend(data) {
   const chart = echarts.init(document.getElementById("trendChart"));
 
   chart.setOption({
-    title: { text: "Execution Trend" },
+    title: { text: "执行趋势" },
 
     xAxis: {
       type: "category",
@@ -151,7 +151,7 @@ function initStatus(data) {
   const chart = echarts.init(document.getElementById("statusChart"));
 
   chart.setOption({
-    title: { text: "Status Distribution" },
+    title: { text: "状态分布" },
 
     series: [
       {
@@ -169,7 +169,7 @@ function initNodeRank(data) {
   const chart = echarts.init(document.getElementById("nodeRankChart"));
 
   chart.setOption({
-    title: { text: "Node Run Rank" },
+    title: { text: "节点运行排名" },
 
     xAxis: { type: "value" },
 
@@ -192,7 +192,7 @@ function initNodeTime(data) {
   const chart = echarts.init(document.getElementById("nodeTimeChart"));
 
   chart.setOption({
-    title: { text: "Node Avg Time" },
+    title: { text: "节点平均时间" },
 
     xAxis: { type: "value" },
 
