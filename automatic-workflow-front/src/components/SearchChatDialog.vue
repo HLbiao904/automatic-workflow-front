@@ -29,7 +29,8 @@
             class="result-item"
             @click="select(item)"
           >
-            {{ item.title }}
+            <div class="title">{{ item.title }}</div>
+            <div class="time">{{ formatDate(item.createdAt) }}</div>
           </div>
         </div>
       </template>
@@ -39,7 +40,7 @@
   </el-dialog>
 </template>
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { Search } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
@@ -50,7 +51,9 @@ const props = defineProps({
     default: () => [],
   },
 });
-
+onMounted(() => {
+  console.log("sessions in search dialog:", props.sessions);
+});
 const emit = defineEmits(["update:modelValue", "select"]);
 
 const visible = ref(false);
@@ -84,31 +87,64 @@ function isYesterday(date) {
 function isLast7Days(date) {
   return dayjs(date).isAfter(dayjs().subtract(7, "day"));
 }
+function isLast14Days(date) {
+  const d = new Date(date);
+  const now = new Date();
+  const diff = (now - d) / (1000 * 60 * 60 * 24);
+  return diff > 7 && diff <= 14;
+}
 
+function isLast30Days(date) {
+  const d = new Date(date);
+  const now = new Date();
+  const diff = (now - d) / (1000 * 60 * 60 * 24);
+  return diff > 14 && diff <= 30;
+}
 const groupedSessions = computed(() => {
   const today = [];
   const yesterday = [];
   const last7Days = [];
+  const last14Days = [];
+  const last30Days = [];
+  const older = [];
 
   filtered.value.forEach((s) => {
-    if (isToday(s.updatedAt)) today.push(s);
-    else if (isYesterday(s.updatedAt)) yesterday.push(s);
-    else if (isLast7Days(s.updatedAt)) last7Days.push(s);
+    if (isToday(s.createdAt)) {
+      today.push(s);
+    } else if (isYesterday(s.createdAt)) {
+      yesterday.push(s);
+    } else if (isLast7Days(s.createdAt)) {
+      last7Days.push(s);
+    } else if (isLast14Days(s.createdAt)) {
+      last14Days.push(s);
+    } else if (isLast30Days(s.createdAt)) {
+      last30Days.push(s);
+    } else {
+      older.push(s);
+    }
   });
 
+  const sortDesc = (arr) =>
+    arr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
   return [
-    { label: "今天", list: today },
-    { label: "昨天", list: yesterday },
-    { label: "前七天", list: last7Days },
+    { label: "今天", list: sortDesc(today) },
+    { label: "昨天", list: sortDesc(yesterday) },
+    { label: "前七天", list: sortDesc(last7Days) },
+    { label: "两星期内", list: sortDesc(last14Days) },
+    { label: "一个月内", list: sortDesc(last30Days) },
+    { label: "更早", list: sortDesc(older) },
   ];
 });
-
+function formatDate(date) {
+  return dayjs(date).format("YYYY-MM-DD HH:mm");
+}
 const hasResult = computed(() =>
   groupedSessions.value.some((g) => g.list.length),
 );
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .result-box {
   margin-top: 16px;
   max-height: 360px;
@@ -125,11 +161,22 @@ const hasResult = computed(() =>
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
   transition: background 0.15s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
   &:hover {
     background: #f3f4f6;
   }
+}
+
+.title {
+  font-size: 14px;
+}
+
+.time {
+  font-size: 12px;
+  color: #9ca3af;
 }
 </style>
