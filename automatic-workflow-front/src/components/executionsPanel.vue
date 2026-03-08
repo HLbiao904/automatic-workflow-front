@@ -399,7 +399,7 @@ function formatTime(ts) {
                   <MonacoJsonViewer
                     :modelValue="
                       JSON.stringify(
-                        safeParse(activeNodeEvent.inputData),
+                        safeParse(activeNodeEvent.outputData),
                         null,
                         2,
                       )
@@ -439,7 +439,7 @@ function formatTime(ts) {
                     <MonacoJsonViewer
                       :modelValue="
                         JSON.stringify(
-                          safeParse(activeNodeEvent.inputData),
+                          safeParse(activeNodeEvent.outputData),
                           null,
                           2,
                         )

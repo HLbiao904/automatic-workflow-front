@@ -25,7 +25,7 @@
       </div>
     </div>
     <div class="bottom item">
-      <div class="menuItem">
+      <div class="menuItem" @click="goInsights">
         <div class="menuIcon"><img src="../assets/insight.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Insights</div>
       </div>
@@ -56,7 +56,9 @@ function goOverwrite() {
 function goPerson() {
   emit("showPerson");
 }
-
+function goInsights() {
+  emit("showInsights");
+}
 const props = defineProps({
   showSidebar: {
     type: Boolean,
@@ -70,6 +72,7 @@ const emit = defineEmits([
   "showOverwrite",
   "showPerson",
   "showChat",
+  "showInsights",
 ]);
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);

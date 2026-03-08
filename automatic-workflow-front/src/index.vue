@@ -44,6 +44,7 @@ import PersonView from "./components/personPanel.vue";
 import Chat from "./components/AiChat.vue";
 import VersionPanel from "./components/versionPanel.vue";
 import GlobalSearchDialog from "./components/GlobalSearchDialog.vue";
+import Dashboard from "./components/Dashboard.vue";
 const { project, addEdges, getViewport, setNodes, updateNode } = useVueFlow();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
@@ -943,6 +944,9 @@ function showChatView() {
 function showPersonView() {
   viewMode.value = "person";
 }
+function showInsightsView() {
+  viewMode.value = "insights";
+}
 // 监听当前工作流 ID 变化，保存到 localStorage
 watch(currentWorkflowId, (id) => {
   if (id) {
@@ -1223,7 +1227,10 @@ async function executeParamsFlow(id, includeStop = false) {
       v-model:viewMode="viewMode"
       class="modeSwitch"
       v-if="
-        viewMode != 'overwrite' && viewMode != 'chat' && viewMode != 'person'
+        viewMode != 'overwrite' &&
+        viewMode != 'chat' &&
+        viewMode != 'person' &&
+        viewMode != 'insights'
       "
     />
     <SideBar
@@ -1231,6 +1238,7 @@ async function executeParamsFlow(id, includeStop = false) {
       @showOverwrite="showOverwriteView"
       @showChat="showChatView"
       @showPerson="showPersonView"
+      @showInsights="showInsightsView"
     />
     <div class="nodeButtonWrapper" v-if="viewMode == 'editor'">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
@@ -1286,7 +1294,10 @@ async function executeParamsFlow(id, includeStop = false) {
       <EditorTopBar
         class="topbar"
         v-if="
-          viewMode != 'overwrite' && viewMode != 'chat' && viewMode != 'person'
+          viewMode != 'overwrite' &&
+          viewMode != 'chat' &&
+          viewMode != 'person' &&
+          viewMode != 'insights'
         "
         v-model:name="workflowName"
         :dirty="isDirty"
@@ -1302,6 +1313,7 @@ async function executeParamsFlow(id, includeStop = false) {
           v-if="viewMode == 'person'"
           @goEditorFromPerson="showEditorView"
         />
+        <Dashboard v-if="viewMode == 'insights'" />
         <AiChat v-if="viewMode == 'chat'" />
         <VueFlow
           id="editor-flow"
@@ -1432,11 +1444,10 @@ body,
 
 .flow-editor {
   display: flex;
-  height: 100vh;
+  height: 100vh; /* 改这里 */
   width: 100%;
   position: relative;
-  overflow: hidden;
-  pointer-events: auto;
+  overflow: hidden; /* 防止body滚动 */
 }
 .topbar {
   height: 56px;
@@ -1445,7 +1456,9 @@ body,
 .content {
   flex: 1;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 .nodeButtonWrapper {
   width: 42px;
@@ -1481,6 +1494,8 @@ body,
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .flow {

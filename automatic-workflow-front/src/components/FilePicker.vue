@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import axios from "axios";
 import { Search, Document, Folder } from "@element-plus/icons-vue";
 
@@ -51,9 +51,12 @@ const props = defineProps({
   modelValue: String,
   param: Object,
 });
-const keyword = ref(props.modelValue || "");
 const autoSearch = ref(true);
 const results = ref([]);
+const keyword = computed({
+  get: () => props.modelValue || "",
+  set: (v) => emit("update:modelValue", v),
+});
 
 let timer = null;
 watch(
@@ -84,7 +87,7 @@ async function searchFile() {
     const res = await axios.get("/everything/", {
       params: {
         search: keyword.value,
-        count: 10,
+        count: 20,
         json: 1,
         path_column: 1,
       },
