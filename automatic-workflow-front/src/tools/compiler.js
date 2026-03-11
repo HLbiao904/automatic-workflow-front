@@ -234,7 +234,10 @@ function compileBoolean(node, edges, nodeMap, graph, options = {}) {
   const trueSeq = compileSequence(trueEdge.target, nodeMap, graph, options);
   const falseSeq = compileSequence(falseEdge.target, nodeMap, graph, options);
 
-  return `IF(${appendNodeMeta(node.data.nodeId, node)}, ${wrapThen(trueSeq, true)}, ${wrapThen(falseSeq, true)})`;
+  return `IF(${appendNodeMeta(node.data.nodeId, node)}, ${wrapThen(
+    trueSeq,
+    true,
+  )}, ${wrapThen(falseSeq, true)})`;
   // return appendNodeMeta(expr, node);
 }
 
@@ -257,7 +260,9 @@ function compileSwitch(node, edges, nodeMap, graph, options = {}) {
     }
   }
 
-  let expr = `SWITCH(${appendNodeMeta(node.data.nodeId, node)}).to(${cases.join(", ")})`;
+  let expr = `SWITCH(${appendNodeMeta(node.data.nodeId, node)}).to(${cases.join(
+    ", ",
+  )})`;
 
   if (defaultCase) {
     expr += `.DEFAULT(${defaultCase})`;
@@ -283,8 +288,10 @@ function compileFor(node, edges, nodeMap, graph, options = {}) {
     { ...options, stopAt: new Set([node.id]) }, // 非常关键
   );
 
-  const forExpr = `FOR(${appendNodeMeta(node.data.nodeId, node)}).DO(${wrapThen(bodySeq, true)})`;
-
+  const forExpr = `FOR(${appendNodeMeta(node.data.nodeId, node)}).DO(${wrapThen(
+    bodySeq,
+    true,
+  )})`;
   // 2️⃣ for 后面还有流程
   if (nextEdge) {
     const nextSeq = compileSequence(nextEdge.target, nodeMap, graph, options);

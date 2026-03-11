@@ -10,15 +10,18 @@
     </div>
 
     <div class="topbar-right">
-      <span v-if="dirty" class="dirty-dot">● 未保存</span>
-      <span v-else class="saved-dot">● 已保存</span>
+      <span v-if="dirty" class="dirty-dot">● 版本未保存</span>
+      <span v-else class="saved-dot">● 版本已保存</span>
       <el-button
         size="small"
         type="primary"
         :disabled="!dirty"
         @click="$emit('save')"
       >
-        保存
+        保存版本
+      </el-button>
+      <el-button size="small" type="primary" @click="$emit('saveTemplate')">
+        保存模版
       </el-button>
     </div>
   </header>

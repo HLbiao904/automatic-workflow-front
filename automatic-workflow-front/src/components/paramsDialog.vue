@@ -179,6 +179,39 @@
                 <div class="panel-header">循环配置</div>
 
                 <div class="rule-row">
+                  <span style="width: 80px">循环模式</span>
+
+                  <el-select
+                    v-model="forConfig.mode"
+                    size="small"
+                    style="width: 160px"
+                  >
+                    <el-option label="遍历数组" value="array" />
+                    <el-option label="固定次数" value="count" />
+                  </el-select>
+                </div>
+
+                <!-- array模式 -->
+                <div class="rule-row" v-if="forConfig.mode === 'array'">
+                  <span style="width: 80px">字段</span>
+
+                  <el-select
+                    v-model="forConfig.field"
+                    placeholder="选择字段"
+                    size="small"
+                    style="width: 160px"
+                  >
+                    <el-option
+                      v-for="field in availableFields"
+                      :key="field"
+                      :label="field"
+                      :value="field"
+                    />
+                  </el-select>
+                </div>
+
+                <!-- count模式 -->
+                <div class="rule-row" v-if="forConfig.mode === 'count'">
                   <span style="width: 80px">循环次数</span>
 
                   <el-input-number
@@ -452,6 +485,8 @@ const isFirstNode = ref(false);
 const booleanBranchResult = ref({});
 const activeBooleanTab = ref("true");
 const forConfig = reactive({
+  mode: "count", // array | count
+  field: "", // 要遍历的字段
   count: 1,
 });
 
@@ -524,6 +559,8 @@ watch(
     if (newNode?.type === "for") {
       if (!newNode.data.loop) {
         newNode.data.loop = {
+          mode: "count", // array | count
+          field: "", // 要遍历的字段
           count: 1,
         };
       }
@@ -534,15 +571,20 @@ watch(
 );
 
 watch(
-  () => forConfig.count,
-  (val) => {
+  () => [forConfig.count, forConfig.field, forConfig.mode],
+  ([count, field, mode]) => {
+    const arrayData = normalizedInputData.value.map((item) => {
+      return field ? getFieldValue(item, field) : item;
+    });
     if (!props.activeNode || props.activeNode.type !== "for") return;
 
-    props.activeNode.data.loop = { count: val };
+    props.activeNode.data.loop = { count: count };
 
     emit("for-loop-change", {
       nodeId: props.activeNode.id,
-      count: val,
+      count: count,
+      arrayData,
+      mode,
     });
   },
 );
@@ -585,6 +627,7 @@ function validateParams() {
     }
   });
 }
+
 function tryParseJSON(value, maxDepth = 3) {
   let current = value;
   let depth = 0;

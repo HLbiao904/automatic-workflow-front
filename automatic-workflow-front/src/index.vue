@@ -46,6 +46,8 @@ import Chat from "./components/AiChat.vue";
 import VersionPanel from "./components/versionPanel.vue";
 import GlobalSearchDialog from "./components/GlobalSearchDialog.vue";
 import Dashboard from "./components/Dashboard.vue";
+import TemplateShowPage from "./components/TemplateShowPage.vue";
+import CreateTemplateDialog from "./components/CreateTemplateDialog.vue";
 const {
   project,
   addEdges,
@@ -86,6 +88,9 @@ const executionsPanelRef = ref(null);
 const versionsPanelRef = ref(null);
 const searchVisible = ref(false);
 const workflowList = ref([]);
+const showTemplateDialog = ref(false);
+
+const templateCategories = ref([]);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -147,7 +152,12 @@ onMounted(async () => {
       },
       data: { label: "开始" },
     },
-  ];
+  ]; // 获取模板分类列表
+  service.get("/workflowTemplate/templateCategoryList").then((res) => {
+    if (res.status == 200) {
+      templateCategories.value = [...res.data];
+    }
+  });
 });
 
 const groupedNodes = computed(() => {
@@ -956,6 +966,9 @@ function showPersonView() {
 function showInsightsView() {
   viewMode.value = "insights";
 }
+function showTemplatesView() {
+  viewMode.value = "templates";
+}
 // 监听当前工作流 ID 变化，保存到 localStorage
 watch(currentWorkflowId, (id) => {
   if (id) {
@@ -1003,6 +1016,25 @@ async function onSave() {
     saving.value = false;
   }
 }
+function saveAsTemplate({ templateName, description, categoryId }) {
+  console.log("保存为模板:", templateName, description, categoryId);
+  service
+    .post("/workflowTemplate/createTemplate", {
+      templateName: templateName,
+      description: description,
+      categoryId: categoryId,
+      nodesJson: JSON.stringify(nodes.value),
+      edgesJson: JSON.stringify(edges.value),
+    })
+    .then((res) => {
+      if (res.status == 200) {
+        ElMessage.success("模板创建成功");
+      }
+    });
+}
+function updateTemplateCategories(newCategories) {
+  templateCategories.value = newCategories;
+}
 function saveWorkflow() {
   const payload = {
     workflowId: localStorage.getItem("current_workflow_id"),
@@ -1019,7 +1051,6 @@ function onNodesChange(changes) {
     isDirty.value = true;
   }
 }
-
 function onEdgesChange(changes) {
   if (changes.some((c) => ["add", "remove", "update"].includes(c.type))) {
     isDirty.value = true;
@@ -1074,13 +1105,18 @@ async function handleBooleanBranch({ nodeId, branches }) {
     booleanBranchData.value.branchKey,
   );
 }
-async function handleForLoopChange({ nodeId, count }) {
+async function handleForLoopChange({ nodeId, count, arrayData, mode }) {
   // loopConfig: { count: number }
   const node = nodes.value.find((n) => n.id === nodeId);
   if (!node) return;
+  const processedArrayData = arrayData.map((item, index) => {
+    return { index: index + 1, value: item };
+  });
   const loopData = {
     nodeId,
     count,
+    processedArrayData,
+    mode,
   };
   await service.post("api/workflow/saveLoopCountToRedis", loopData);
   // 更新节点数据
@@ -1247,7 +1283,8 @@ const autoLayout = async (direction) => {
         viewMode != 'overwrite' &&
         viewMode != 'chat' &&
         viewMode != 'person' &&
-        viewMode != 'insights'
+        viewMode != 'insights' &&
+        viewMode != 'templates'
       "
     />
     <SideBar
@@ -1256,6 +1293,7 @@ const autoLayout = async (direction) => {
       @showChat="showChatView"
       @showPerson="showPersonView"
       @showInsights="showInsightsView"
+      @showTemplates="showTemplatesView"
     />
     <div class="nodeButtonWrapper" v-if="viewMode == 'editor'">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
@@ -1314,11 +1352,13 @@ const autoLayout = async (direction) => {
           viewMode != 'overwrite' &&
           viewMode != 'chat' &&
           viewMode != 'person' &&
-          viewMode != 'insights'
+          viewMode != 'insights' &&
+          viewMode != 'templates'
         "
         v-model:name="workflowName"
         :dirty="isDirty"
         @save="onSave"
+        @saveTemplate="showTemplateDialog = true"
       />
 
       <div class="content">
@@ -1331,6 +1371,7 @@ const autoLayout = async (direction) => {
           @goEditorFromPerson="showEditorView"
         />
         <Dashboard v-if="viewMode == 'insights'" />
+        <TemplateShowPage v-if="viewMode == 'templates'" />
         <AiChat v-if="viewMode == 'chat'" />
         <VueFlow
           id="editor-flow"
@@ -1455,6 +1496,12 @@ const autoLayout = async (direction) => {
       @boolean-branch-data="handleBooleanBranch"
       @for-loop-change="handleForLoopChange"
       @remove-rule="handleRemoveRule"
+    />
+    <CreateTemplateDialog
+      v-model="showTemplateDialog"
+      :categories="templateCategories"
+      @update-categories="updateTemplateCategories"
+      @submit="saveAsTemplate"
     />
   </div>
 </template>

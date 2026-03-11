@@ -29,9 +29,9 @@
         <div class="menuIcon"><img src="../assets/insight.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Insights</div>
       </div>
-      <div class="menuItem">
+      <div class="menuItem" @click="goTemplates">
         <div class="menuIcon"><img src="../assets/chat.svg" /></div>
-        <div class="menuTitle" v-if="!collapsed">MenuItem2</div>
+        <div class="menuTitle" v-if="!collapsed">Templates</div>
       </div>
       <div class="menuItem">
         <div class="menuIcon"><img src="../assets/chat.svg" /></div>
@@ -58,6 +58,9 @@ function goPerson() {
 }
 function goInsights() {
   emit("showInsights");
+}
+function goTemplates() {
+  emit("showTemplates");
 }
 const props = defineProps({
   showSidebar: {

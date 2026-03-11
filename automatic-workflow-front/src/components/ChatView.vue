@@ -139,7 +139,7 @@ async function send() {
   const question = input.value.trim();
   input.value = "";
 
-  // 1️⃣ 用户消息
+  // 用户消息
   messages.value.push({
     id: Date.now(),
     role: "user",
@@ -152,7 +152,7 @@ async function send() {
   let sid = localSessionId.value;
 
   try {
-    // 2️⃣ 创建 session
+    // 创建 session
     if (props.isNewSession) {
       const res = await service.post("/chat/newSession", {
         userId: localStorage.getItem("userId"),
@@ -164,7 +164,7 @@ async function send() {
       emit("session-created", res.data);
     }
 
-    // 3️⃣ AI 占位
+    // AI 占位
     const aiMsg = {
       id: Date.now() + Math.random(),
       role: "assistant",
@@ -177,7 +177,7 @@ async function send() {
     await nextTick();
     scrollBottom();
 
-    // 4️⃣ SSE 请求
+    // SSE 请求
     const response = await fetch("http://127.0.0.1:8080/chat", {
       method: "POST",
       headers: {
