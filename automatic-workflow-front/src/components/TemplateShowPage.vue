@@ -168,6 +168,7 @@ const categoryForm = ref({
 
 const templates = ref([]);
 const categories = ref([]);
+const emit = defineEmits(["use-template"]);
 
 // 获取分类和模板
 onMounted(() => {
@@ -257,14 +258,14 @@ function preview(row) {
 }
 
 function useTemplate(row) {
-  console.log("使用模板", row);
+  emit("use-template", row);
 }
 
 // 新建模板
 function submitTemplate() {
   service
     .post("/workflowTemplate/createTemplate", {
-      userId: Number(localStorage.getItem("current_workflow_id")),
+      userId: Number(localStorage.getItem("userId")),
       templateName: templateForm.value.name,
       description: templateForm.value.description,
       categoryId: templateForm.value.categoryId,

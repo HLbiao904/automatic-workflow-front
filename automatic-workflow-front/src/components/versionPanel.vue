@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, markRaw, watch } from "vue";
+import { ref, onMounted, markRaw, watch, onUpdated } from "vue";
 import { ElMessage } from "element-plus";
 import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
@@ -33,6 +33,9 @@ const props = defineProps({
 defineExpose({
   reload: loadVersions,
 });
+onUpdated(() => {
+  console.log(previewNodes.value, previewEdges.value);
+});
 //监听工作流切换,查询该workflow的versions列表
 watch(
   () => props.workflowId,
@@ -52,17 +55,18 @@ const versions = ref([]);
 const previewNodes = ref([]);
 const previewEdges = ref([]);
 
-async function loadVersions() {
+async function loadVersions(workflowId = null) {
   if (!props.workflowId) return;
 
   loading.value = true;
   try {
     const res = await service.get("/workflow/version/list", {
-      params: { workflowId: props.workflowId },
+      params: { workflowId: workflowId ? workflowId : props.workflowId },
     });
     versions.value = res.data || [];
     versions.value.sort((a, b) => b.version - a.version);
-    loadVersion(versions.value[0]);
+    const version = versions.value[0] ? versions.value[0] : null;
+    loadVersion(version);
     console.log("versions", versions);
   } catch (e) {
     ElMessage.error("加载版本列表失败");
@@ -74,6 +78,11 @@ async function loadVersions() {
 const activeVersionId = ref(null);
 
 async function loadVersion(version) {
+  if (version == null) {
+    previewNodes.value = [];
+    previewEdges.value = [];
+    return;
+  }
   activeVersionId.value = version.id;
 
   try {
@@ -274,9 +283,8 @@ onMounted(loadVersions);
   margin-top: 4px;
   font-size: 14px;
   color: #909399;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 
   background: transparent;
 }
@@ -313,8 +321,7 @@ onMounted(loadVersions);
 
   /* 轻描边 + 阴影 */
   border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.08),
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 
   user-select: none;

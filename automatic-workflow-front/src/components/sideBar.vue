@@ -161,6 +161,7 @@ function toggle() {
     }
     .menuItem:hover {
       background: #f5f5f5;
+      border-radius: 5px;
     }
 
     .menuItem.active {
@@ -198,6 +199,7 @@ function toggle() {
     }
     .menuItem:hover {
       background: #f5f5f5;
+      border-radius: 5px;
     }
 
     .menuItem.active {

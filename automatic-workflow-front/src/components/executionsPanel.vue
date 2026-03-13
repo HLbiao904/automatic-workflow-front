@@ -26,6 +26,9 @@ const nodeTypes = {
 const edgeTypes = {
   default: markRaw(DefaultEdge),
 };
+defineExpose({
+  reload: loadExecutions,
+});
 /* ========== props ========== */
 const props = defineProps({
   workflowId: {
@@ -33,9 +36,7 @@ const props = defineProps({
     required: true,
   },
 });
-defineExpose({
-  reload: loadExecutions,
-});
+
 /* ========== execution list ========== */
 const executionDetailNodes = ref([]);
 const executions = ref([]);
@@ -46,7 +47,6 @@ const activeNodeId = ref(null);
 const ioTab = ref("input");
 
 const viewMode = ref("input"); // input | output | both
-
 function safeParse(val) {
   if (!val) return {};
   if (typeof val === "object") return val;
@@ -86,6 +86,7 @@ onMounted(() => {
       executions.value = res.data || [];
     });
 });
+
 //监听工作流切换,查询该workflow的execution列表
 watch(
   () => props.workflowId,

@@ -239,7 +239,7 @@ async function createWorkflow() {
   createFormRef.value.validate(async (valid) => {
     if (!valid) return;
     const res = await service.post("/api/workflow/create", {
-      userId: 1,
+      userId: localStorage.getItem("userId"),
       name: form.value.name,
       description: form.value.description,
     });
@@ -325,11 +325,13 @@ function deleteWorkflow(item) {
 function formatTime(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes(),
-  ).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+    2,
+    "0",
+  )}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(
+    2,
+    "0",
+  )}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 </script>
 

@@ -48,6 +48,7 @@ import GlobalSearchDialog from "./components/GlobalSearchDialog.vue";
 import Dashboard from "./components/Dashboard.vue";
 import TemplateShowPage from "./components/TemplateShowPage.vue";
 import CreateTemplateDialog from "./components/CreateTemplateDialog.vue";
+import { ElMessage } from "element-plus";
 
 const {
   project,
@@ -1274,6 +1275,22 @@ const autoLayout = async (direction) => {
     fitView({ padding: 0.3 });
   }
 };
+async function useTemplate(templateData) {
+  viewMode.value = "editor";
+  nodes.value = stripNodeStatus(JSON.parse(templateData.nodesJson));
+  edges.value = stripEdgeStatus(JSON.parse(templateData.edgesJson));
+  isDirty.value = true;
+  // 使用模版时自动创建工作流
+  const res = await service.post("/api/workflow/create", {
+    userId: localStorage.getItem("userId"),
+    name: templateData.templateName,
+    description: templateData.description,
+  });
+  if (res.status == 200) {
+    currentWorkflowId.value = res.data.id;
+    ElMessage.success("工作流创建成功");
+  }
+}
 </script>
 
 <template>
@@ -1373,7 +1390,10 @@ const autoLayout = async (direction) => {
           @goEditorFromPerson="showEditorView"
         />
         <Dashboard v-if="viewMode == 'insights'" />
-        <TemplateShowPage v-if="viewMode == 'templates'" />
+        <TemplateShowPage
+          v-if="viewMode == 'templates'"
+          @use-template="useTemplate"
+        />
         <AiChat v-if="viewMode == 'chat'" />
         <VueFlow
           id="editor-flow"
