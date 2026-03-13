@@ -27,7 +27,7 @@ const videoRef = ref(null);
 // 拼接后端接口
 const videoUrl = computed(() => {
   if (!props.path) return "";
-  return `http://localhost:8080/video?path=${encodeURIComponent(props.path)}`;
+  return `http://localhost:10086/video?path=${encodeURIComponent(props.path)}`;
 });
 
 // path变化时重新加载视频

@@ -101,6 +101,9 @@ const registerForm = ref({
   email: "",
 });
 
+const isOwner = computed(() => {
+  return props.preViewData?.userId == localStorage.getItem("userId");
+});
 async function handleLogin() {
   if (!loginForm.value.account || !loginForm.value.password) {
     ElMessage.warning("请输入用户名和密码");
@@ -111,6 +114,7 @@ async function handleLogin() {
   if (res.status === 200 && res.data) {
     // 设置当前登录用户id
     localStorage.setItem("userId", res.data.id);
+    localStorage.setItem("userName", res.data.username);
     ElMessage.success("登录成功");
     // 跳转到首页
     router.push("/");

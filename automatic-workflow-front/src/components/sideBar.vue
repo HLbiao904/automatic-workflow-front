@@ -11,26 +11,46 @@
       </div>
     </div>
     <div class="center item">
-      <div class="menuItem" @click="goOverwrite">
+      <div
+        class="menuItem"
+        :class="{ active: activeMenu === 'overwrite' }"
+        @click="goOverwrite"
+      >
         <div class="menuIcon"><img src="../assets/home.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Overwrite</div>
       </div>
-      <div class="menuItem" @click="goPerson">
+      <div
+        class="menuItem"
+        :class="{ active: activeMenu === 'person' }"
+        @click="goPerson"
+      >
         <div class="menuIcon"><img src="../assets/user.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Personal</div>
       </div>
-      <div class="menuItem" @click="goChat">
+      <div
+        class="menuItem"
+        :class="{ active: activeMenu === 'chat' }"
+        @click="goChat"
+      >
         <div class="menuIcon"><img src="../assets/chat.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Chat</div>
       </div>
     </div>
     <div class="bottom item">
-      <div class="menuItem" @click="goInsights">
+      <div
+        class="menuItem"
+        :class="{ active: activeMenu === 'insights' }"
+        @click="goInsights"
+      >
         <div class="menuIcon"><img src="../assets/insight.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Insights</div>
       </div>
-      <div class="menuItem" @click="goTemplates">
-        <div class="menuIcon"><img src="../assets/chat.svg" /></div>
+      <div
+        class="menuItem"
+        :class="{ active: activeMenu === 'templates' }"
+        @click="goTemplates"
+      >
+        <div class="menuIcon"><img src="../assets/template.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Templates</div>
       </div>
       <div class="menuItem">
@@ -42,24 +62,29 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed } from "vue";
+import { defineProps, defineEmits, computed, ref } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
-
+const activeMenu = ref("overwrite");
 function goChat() {
+  activeMenu.value = "chat";
   emit("showChat");
 }
 function goOverwrite() {
+  activeMenu.value = "overwrite";
   emit("showOverwrite");
 }
 function goPerson() {
+  activeMenu.value = "person";
   emit("showPerson");
 }
 function goInsights() {
+  activeMenu.value = "insights";
   emit("showInsights");
 }
 function goTemplates() {
+  activeMenu.value = "templates";
   emit("showTemplates");
 }
 const props = defineProps({
@@ -134,6 +159,13 @@ function toggle() {
         font-size: 14px;
       }
     }
+    .menuItem:hover {
+      background: #f5f5f5;
+    }
+
+    .menuItem.active {
+      background: #e6f4ff;
+    }
     // border-bottom: 1px solid #eee;
   }
   .bottom {
@@ -163,6 +195,13 @@ function toggle() {
         flex: 1;
         font-size: 14px;
       }
+    }
+    .menuItem:hover {
+      background: #f5f5f5;
+    }
+
+    .menuItem.active {
+      background: #e6f4ff;
     }
   }
   .item-group {

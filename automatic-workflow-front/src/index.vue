@@ -48,6 +48,7 @@ import GlobalSearchDialog from "./components/GlobalSearchDialog.vue";
 import Dashboard from "./components/Dashboard.vue";
 import TemplateShowPage from "./components/TemplateShowPage.vue";
 import CreateTemplateDialog from "./components/CreateTemplateDialog.vue";
+
 const {
   project,
   addEdges,
@@ -1020,6 +1021,7 @@ function saveAsTemplate({ templateName, description, categoryId }) {
   console.log("保存为模板:", templateName, description, categoryId);
   service
     .post("/workflowTemplate/createTemplate", {
+      userId: Number(localStorage.getItem("userId")),
       templateName: templateName,
       description: description,
       categoryId: categoryId,

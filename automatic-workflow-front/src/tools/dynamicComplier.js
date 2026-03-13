@@ -87,7 +87,7 @@ export function dynamicCompileFlow(nodes, edges, stopNodeId) {
 
     const children = graph[nodeId] || [];
 
-    // 🎯 命中 stopNode
+    // 命中 stopNode
     if (nodeId === stopNodeId) {
       stopReached = true;
       return wrapData(node);

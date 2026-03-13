@@ -131,19 +131,29 @@
         <el-button type="primary" @click="submitCategory"> 确定 </el-button>
       </template>
     </el-dialog>
+    <TemplatePreview
+      :preViewData="preViewData"
+      v-model:visible="showPreview"
+      @delete="deleteTemplate"
+      @publish="publishTemplate"
+      @draft="draftTemplate"
+    />
   </div>
 </template>
 
 <script setup>
+import { ElMessage } from "element-plus";
 import { ref, computed, onMounted } from "vue";
 import service from "../service/index.js";
+import TemplatePreview from "./TemplatePreview.vue";
 
 const keyword = ref("");
 const activeCategory = ref("0"); // 默认选中“全部”
 
 const createDialog = ref(false);
 const categoryDialog = ref(false);
-
+const showPreview = ref(false);
+const preViewData = ref(null);
 const templateForm = ref({
   name: "",
   description: "",
@@ -179,18 +189,51 @@ const sortedCategories = computed(() => {
 // 筛选模板
 const filteredTemplates = computed(() => {
   let list = templates.value;
-
+  console.log(activeCategory.value, templates.value);
   if (activeCategory.value !== "0") {
-    list = list.filter((t) => t.categoryId === activeCategory.value);
+    list = list.filter(
+      (t) => Number(t.categoryId) === Number(activeCategory.value),
+    );
   }
-
   if (keyword.value) {
     list = list.filter((t) => t.templateName.includes(keyword.value));
   }
-
   return list;
 });
 
+async function deleteTemplate(templateId) {
+  const res = await service.delete(`/workflowTemplate/${templateId}`);
+  if (res.status === 200) {
+    ElMessage.success("模板删除成功");
+    service.get("/workflowTemplate/templateList").then((res) => {
+      if (res.status === 200) templates.value = res.data;
+    });
+  }
+}
+async function publishTemplate(data) {
+  const res = await service.put(
+    `/workflowTemplate/updateTemplateStatus/${data.id}/${data.status}`,
+  );
+  if (res.status === 200) {
+    ElMessage.success("模板发布成功");
+    service.get("/workflowTemplate/templateList").then((res) => {
+      if (res.status === 200) templates.value = res.data;
+    });
+    preViewData.value.status = 1;
+  }
+}
+async function draftTemplate(data) {
+  const res = await service.put(
+    `/workflowTemplate/updateTemplateStatus/${data.id}/${data.status}`,
+  );
+  if (res.status === 200) {
+    ElMessage.success("设为草稿成功");
+    service.get("/workflowTemplate/templateList").then((res) => {
+      if (res.status === 200) templates.value = res.data;
+    });
+    preViewData.value.status = 0;
+  }
+}
 function getNodeCount(nodesJson) {
   try {
     return JSON.parse(nodesJson).length;
@@ -201,6 +244,16 @@ function getNodeCount(nodesJson) {
 
 function preview(row) {
   console.log("预览模板", row);
+  // 获取模版创建者
+  service.get(`/auth/queryUserById/${row.userId}`).then((res) => {
+    if (res.status === 200) {
+      showPreview.value = true;
+      preViewData.value = {
+        ...row,
+      };
+      preViewData.value.username = res.data.username;
+    }
+  });
 }
 
 function useTemplate(row) {
@@ -211,6 +264,7 @@ function useTemplate(row) {
 function submitTemplate() {
   service
     .post("/workflowTemplate/createTemplate", {
+      userId: Number(localStorage.getItem("current_workflow_id")),
       templateName: templateForm.value.name,
       description: templateForm.value.description,
       categoryId: templateForm.value.categoryId,
@@ -313,4 +367,3 @@ function submitCategory() {
   gap: 8px;
 }
 </style>
-```
