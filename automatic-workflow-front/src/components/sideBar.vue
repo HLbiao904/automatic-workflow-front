@@ -53,10 +53,25 @@
         <div class="menuIcon"><img src="../assets/template.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Templates</div>
       </div>
-      <div class="menuItem">
-        <div class="menuIcon"><img src="../assets/chat.svg" /></div>
-        <div class="menuTitle" v-if="!collapsed">MenuItem3</div>
-      </div>
+
+      <el-dropdown @command="handleConfig" trigger="click">
+        <div
+          class="menuItem"
+          :class="{ active: activeMenu === 'configuration' }"
+        >
+          <div class="menuIcon">
+            <img src="../assets/configuration.svg" />
+          </div>
+          <div class="menuTitle" v-if="!collapsed">Configuration</div>
+        </div>
+
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="node">节点配置</el-dropdown-item>
+            <el-dropdown-item command="user">用户配置</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
   </aside>
 </template>
@@ -87,6 +102,10 @@ function goTemplates() {
   activeMenu.value = "templates";
   emit("showTemplates");
 }
+function goConfiguration() {
+  activeMenu.value = "configuration";
+  emit("showConfiguration");
+}
 const props = defineProps({
   showSidebar: {
     type: Boolean,
@@ -101,9 +120,19 @@ const emit = defineEmits([
   "showPerson",
   "showChat",
   "showInsights",
+  "showConfiguration",
 ]);
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
+}
+function handleConfig(command) {
+  if (command === "node") {
+    emit("showConfiguration", "nodeConfig");
+  }
+
+  if (command === "user") {
+    emit("showConfiguration", "userConfig");
+  }
 }
 </script>
 
@@ -276,5 +305,9 @@ function toggle() {
   display: flex;
   align-items: center;
   padding: 0;
+}
+.bottom :deep(.el-dropdown) {
+  width: 100%;
+  display: block;
 }
 </style>

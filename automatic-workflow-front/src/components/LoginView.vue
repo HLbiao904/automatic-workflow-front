@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import service from "@/service";
 import { useRouter } from "vue-router";
@@ -110,7 +110,7 @@ async function handleLogin() {
     return;
   }
 
-  const res = await service.post("/auth/login", loginForm.value);
+  const res = await service.post("/user/login", loginForm.value);
   if (res.status === 200 && res.data) {
     // 设置当前登录用户id
     localStorage.setItem("userId", res.data.id);
@@ -128,7 +128,7 @@ async function handleRegister() {
     ElMessage.warning("用户名和密码必填");
     return;
   }
-  const res = await service.post("/auth/register", registerForm.value);
+  const res = await service.post("/user/register", registerForm.value);
   if (res.status === 200) {
     ElMessage.success("注册成功，请登录");
     activeTab.value = "login";

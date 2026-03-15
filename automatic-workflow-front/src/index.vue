@@ -48,6 +48,8 @@ import GlobalSearchDialog from "./components/GlobalSearchDialog.vue";
 import Dashboard from "./components/Dashboard.vue";
 import TemplateShowPage from "./components/TemplateShowPage.vue";
 import CreateTemplateDialog from "./components/CreateTemplateDialog.vue";
+import NodeConfiguration from "./components/NodeConfiguration.vue";
+import UserConfiguration from "./components/UserConfiguration.vue";
 import { ElMessage } from "element-plus";
 
 const {
@@ -214,6 +216,7 @@ function startDrag(template) {
           defaultValue: p.defaultValue ?? null,
         })),
         description: template.description,
+        icon: template.icon,
       },
     });
     isDirty.value = true;
@@ -242,6 +245,7 @@ function addNodeToEditor(node) {
         defaultValue: p.defaultValue ?? null,
       })),
       description: node.description,
+      icon: node.icon,
     },
   });
 }
@@ -971,6 +975,10 @@ function showInsightsView() {
 function showTemplatesView() {
   viewMode.value = "templates";
 }
+function showConfigurationView(configMode) {
+  console.log(configMode);
+  viewMode.value = configMode;
+}
 // 监听当前工作流 ID 变化，保存到 localStorage
 watch(currentWorkflowId, (id) => {
   if (id) {
@@ -1303,7 +1311,9 @@ async function useTemplate(templateData) {
         viewMode != 'chat' &&
         viewMode != 'person' &&
         viewMode != 'insights' &&
-        viewMode != 'templates'
+        viewMode != 'templates' &&
+        viewMode != 'nodeConfig' &&
+        viewMode != 'userConfig'
       "
     />
     <SideBar
@@ -1313,6 +1323,7 @@ async function useTemplate(templateData) {
       @showPerson="showPersonView"
       @showInsights="showInsightsView"
       @showTemplates="showTemplatesView"
+      @showConfiguration="showConfigurationView"
     />
     <div class="nodeButtonWrapper" v-if="viewMode == 'editor'">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
@@ -1372,7 +1383,9 @@ async function useTemplate(templateData) {
           viewMode != 'chat' &&
           viewMode != 'person' &&
           viewMode != 'insights' &&
-          viewMode != 'templates'
+          viewMode != 'templates' &&
+          viewMode != 'nodeConfig' &&
+          viewMode != 'userConfig'
         "
         v-model:name="workflowName"
         :dirty="isDirty"
@@ -1498,6 +1511,8 @@ async function useTemplate(templateData) {
           :workflowId="currentWorkflowId"
           ref="versionsPanelRef"
         />
+        <NodeConfiguration v-show="viewMode === 'nodeConfig'" />
+        <UserConfiguration v-show="viewMode === 'userConfig'" />
       </div>
     </div>
 

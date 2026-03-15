@@ -34,7 +34,9 @@
         <div class="error" v-if="statusClass == 'node-error'">
           <img class="error-icon" src="../assets/error.svg" />
         </div>
-        <img src="../assets/code-solid-full.svg" class="node-icon" />
+
+        <img v-if="data.icon" :src="data.icon" class="node-icon" />
+        <img v-else src="../assets/code-solid-full.svg" class="node-icon" />
       </div>
       <Handle
         id="in"
@@ -432,13 +434,10 @@ watch(
 .common-node.node-running {
   border: 3px solid transparent;
   border-radius: 8px;
-  background:
-    linear-gradient(#fff, #fff) padding-box,
+  background: linear-gradient(#fff, #fff) padding-box,
     linear-gradient(90deg, #00ffcc, #00ccff, #00ffcc) border-box;
 
-  background-size:
-    100% 100%,
-    300% 300%;
+  background-size: 100% 100%, 300% 300%;
 
   animation: borderFlow 1.2s linear infinite;
 }

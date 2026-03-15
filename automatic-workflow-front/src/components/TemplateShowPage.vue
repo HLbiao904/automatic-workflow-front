@@ -246,7 +246,7 @@ function getNodeCount(nodesJson) {
 function preview(row) {
   console.log("预览模板", row);
   // 获取模版创建者
-  service.get(`/auth/queryUserById/${row.userId}`).then((res) => {
+  service.get(`/user/queryUserById/${row.userId}`).then((res) => {
     if (res.status === 200) {
       showPreview.value = true;
       preViewData.value = {

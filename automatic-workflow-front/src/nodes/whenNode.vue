@@ -22,7 +22,8 @@
 
     <div class="when-node">
       <div class="node-body">
-        <img src="../assets/parallel.svg" class="node-icon" />
+        <img v-if="data.icon" :src="data.icon" class="node-icon" />
+        <img v-else src="../assets/parallel.svg" class="node-icon" />
       </div>
       <Handle id="in" type="target" :position="Position.Left" />
       <Handle id="parallel" type="source" :position="Position.Right" />
