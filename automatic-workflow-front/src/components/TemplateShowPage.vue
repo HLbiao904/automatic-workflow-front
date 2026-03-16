@@ -175,6 +175,9 @@ onMounted(() => {
   service.get("/workflowTemplate/templateList").then((res) => {
     if (res.status === 200) templates.value = res.data;
     console.log("获取模板列表:", res.data);
+    res.data.forEach((item) => {
+      getNodeIcons(item.nodesJson, item.id, item.userId);
+    });
   });
   service.get("/workflowTemplate/templateCategoryList").then((res) => {
     if (res.status === 200) categories.value = res.data;
@@ -201,7 +204,13 @@ const filteredTemplates = computed(() => {
   }
   return list;
 });
-
+function getNodeIcons(nodesJson, templateId, userId) {
+  const nodes = JSON.parse(nodesJson);
+  const nodeIdList = nodes
+    .filter((item) => item.data && item.data.nodeId)
+    .map((item) => item.data.nodeId);
+  console.log("nodeIdList", nodeIdList, templateId, userId);
+}
 async function deleteTemplate(templateId) {
   const res = await service.delete(`/workflowTemplate/${templateId}`);
   if (res.status === 200) {

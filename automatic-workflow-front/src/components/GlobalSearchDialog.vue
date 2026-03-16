@@ -33,22 +33,9 @@
             @click="handleSelect({ type: 'node', data: n })"
           >
             <!-- 左侧图标 -->
-            <div class="node-icon" v-if="n.type == 'COMMON'">
-              <img src="../assets/code-solid-full.svg" alt="icon" />
+            <div class="node-icon">
+              <img :src="getIcon(n)" />
             </div>
-            <div class="node-icon" v-else-if="n.type == 'SWITCH'">
-              <img src="../assets/flagSwitch.svg" alt="icon" />
-            </div>
-            <div class="node-icon" v-else-if="n.type == 'FOR'">
-              <img src="../assets/ForNode.svg" alt="icon" />
-            </div>
-            <div class="node-icon" v-else-if="n.type == 'WHEN'">
-              <img src="../assets/parallel.svg" alt="icon" />
-            </div>
-            <div class="node-icon" v-else-if="n.type == 'BOOLEAN'">
-              <img src="../assets/flagBoolean.svg" alt="icon" />
-            </div>
-
             <!-- 内容 -->
             <div class="node-content">
               <div class="title" v-html="highlight(n.label)" />
@@ -99,7 +86,11 @@ import {
   nextTick,
 } from "vue";
 import dayjs from "dayjs";
-
+import commonIcon from "../assets/code-solid-full.svg";
+import switchIcon from "../assets/flagSwitch.svg";
+import forIcon from "../assets/ForNode.svg";
+import whenIcon from "../assets/parallel.svg";
+import booleanIcon from "../assets/flagBoolean.svg";
 /* props */
 const props = defineProps({
   modelValue: Boolean,
@@ -175,6 +166,25 @@ watch(
   },
 );
 
+function getIcon(n) {
+  // 1 优先使用网络icon
+  if (n.icon) return n.icon;
+  // 2 fallback本地图标
+  switch ((n.type || "").toUpperCase()) {
+    case "COMMON":
+      return commonIcon;
+    case "SWITCH":
+      return switchIcon;
+    case "FOR":
+      return forIcon;
+    case "WHEN":
+      return whenIcon;
+    case "BOOLEAN":
+      return booleanIcon;
+    default:
+      return commonIcon;
+  }
+}
 /* ================= 键盘控制 ================= */
 function handleKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === "k") {

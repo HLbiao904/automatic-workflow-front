@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
+import service from "../service/index.js";
 import { Search } from "@element-plus/icons-vue";
 import commonIcon from "../assets/code-solid-full.svg";
 import switchIcon from "../assets/flagSwitch.svg";
@@ -25,6 +26,41 @@ const emit = defineEmits([
   "replace-node",
   "update:isReplaceNode",
 ]);
+const nodesWithIcon = ref([]);
+
+watch(
+  () => props.nodes,
+  async (nodes) => {
+    if (!nodes) return;
+
+    const list = [];
+
+    for (const n of nodes) {
+      let icon = "";
+
+      try {
+        const res = await service.get(
+          "/workflowTemplate/getTemplateNodeIcons",
+          {
+            params: { nodeId: n.nodeId },
+          },
+        );
+
+        icon = res?.data;
+      } catch (e) {
+        console.error("获取icon失败", e);
+      }
+
+      list.push({
+        ...n,
+        icon: icon,
+      });
+    }
+
+    nodesWithIcon.value = list;
+  },
+  { immediate: true },
+);
 
 /* state */
 const keyword = ref("");
@@ -34,7 +70,7 @@ const activeCategories = ref([]);
 const groupedNodes = computed(() => {
   const map = {};
 
-  props.nodes.forEach((node) => {
+  nodesWithIcon.value.forEach((node) => {
     const code = node.categoryCode || "DEFAULT";
 
     if (!map[code]) {
@@ -98,7 +134,6 @@ function replaceNode(node) {
   emit("update:isReplaceNode", false);
 }
 function getNodeIcon(type) {
-  console.log("getNodeIcon", type);
   switch ((type || "").toUpperCase()) {
     case "COMMON":
       return commonIcon;
@@ -114,6 +149,38 @@ function getNodeIcon(type) {
       return commonIcon;
   }
 }
+/* async function getNodeIcon(type, nodeId) {
+  try {
+    const res = await service.get("/workflowTemplate/getTemplateNodeIcons", {
+      params: { nodeId },
+    });
+
+    const iconUrl = res?.data;
+
+    // 如果后端返回了icon地址
+    if (iconUrl) {
+      return iconUrl;
+    }
+  } catch (e) {
+    console.error("获取节点icon失败", e);
+  }
+
+  // 没有网络icon时使用本地icon
+  switch ((type || "").toUpperCase()) {
+    case "COMMON":
+      return commonIcon;
+    case "SWITCH":
+      return switchIcon;
+    case "FOR":
+      return forIcon;
+    case "WHEN":
+      return whenIcon;
+    case "BOOLEAN":
+      return booleanIcon;
+    default:
+      return commonIcon;
+  }
+} */
 </script>
 
 <template>
@@ -155,7 +222,7 @@ function getNodeIcon(type) {
             <div class="node-content">
               <!-- 左侧图标 -->
               <div class="node-icon">
-                <img :src="getNodeIcon(n.type)" alt="icon" />
+                <img :src="n.icon || getNodeIcon(n.type)" alt="icon" />
               </div>
               <div class="node-text">
                 <div class="node-row">
