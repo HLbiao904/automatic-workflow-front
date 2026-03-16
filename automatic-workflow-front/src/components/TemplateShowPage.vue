@@ -243,21 +243,23 @@ async function getTemplateInfo(nodesJson, templateId, userId) {
 
   const nodes = JSON.parse(nodesJson);
 
-  const nodeIdList = nodes
-    .filter((item) => item.data && item.data.nodeId)
-    .map((item) => item.data.nodeId);
+  const nodeIdList = [
+    ...new Set(
+      nodes
+        .filter((item) => item.data && item.data.nodeId)
+        .map((item) => item.data.nodeId),
+    ),
+  ];
 
-  // 获取节点icon
-  const iconPromises = nodeIdList.map((nodeId) =>
-    service.get("/workflowTemplate/getTemplateNodeIcons", {
-      params: { nodeId },
-    }),
+  // 发送 POST 请求，body 直接传数组
+  const iconRes = await service.post(
+    "/workflowTemplate/getTemplateNodeIconsByNodeIdList",
+    nodeIdList,
   );
 
-  const iconRes = await Promise.all(iconPromises);
-  templateNodes.nodeIcons = iconRes.map((r) => r.data);
+  templateNodes.nodeIcons = iconRes.data;
 
-  // 获取用户
+  // 获取用户信息
   const user = await service.get(`/user/queryUserById/${userId}`);
 
   templateNodes.userAvatar = user.data.avatar;
@@ -345,9 +347,16 @@ function preview(row) {
 }
 
 function useTemplate(row) {
-  emit("use-template", row);
+  ElMessageBox.confirm("使用模板将创建一个新的工作流，是否继续？", "使用模板", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      emit("use-template", row);
+    })
+    .catch(() => {});
 }
-
 // 新建模板
 function submitTemplate() {
   service

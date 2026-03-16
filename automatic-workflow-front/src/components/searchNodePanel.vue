@@ -40,7 +40,7 @@ watch(
 
       try {
         const res = await service.get(
-          "/workflowTemplate/getTemplateNodeIcons",
+          "/workflowTemplate/getTemplateNodeIconsByNodeId",
           {
             params: { nodeId: n.nodeId },
           },
