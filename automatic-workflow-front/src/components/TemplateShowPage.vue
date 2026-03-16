@@ -37,7 +37,10 @@
       <el-col v-for="item in filteredTemplates" :key="item.id" :span="6">
         <el-card class="template-card" shadow="hover">
           <div class="cover">
-            <span>Workflow</span>
+            <span>工作流模版</span>
+            <el-tag size="small" class="cate-tag">
+              {{ getCategoryName(item.categoryId) }}
+            </el-tag>
           </div>
 
           <div class="card-header">
@@ -46,12 +49,25 @@
               {{ item.status === 1 ? "已发布" : "草稿" }}
             </el-tag>
           </div>
-
           <div class="desc">{{ item.description || "暂无描述" }}</div>
+          <div class="creator">
+            <img :src="getTemplateAvatar(item.id)" class="avatar" />
+            <span class="username">{{ getTemplateUsername(item.id) }}</span>
+          </div>
 
           <div class="meta">
-            <span>节点 {{ getNodeCount(item.nodesJson) }}</span>
-            <span>使用 {{ item.useCount || 0 }}</span>
+            <div class="node-icons">
+              <img
+                v-for="icon in getTemplateIcons(item.id)"
+                :key="icon"
+                :src="icon"
+                class="node-icon"
+              />
+            </div>
+            <div class="stats">
+              <span>⬛ 节点 {{ getNodeCount(item.nodesJson) }}</span>
+              <span>🔥 使用 {{ item.useCount || 0 }}</span>
+            </div>
           </div>
 
           <div class="actions">
@@ -154,6 +170,7 @@ const createDialog = ref(false);
 const categoryDialog = ref(false);
 const showPreview = ref(false);
 const preViewData = ref(null);
+const templateInfoList = ref([]);
 const templateForm = ref({
   name: "",
   description: "",
@@ -171,17 +188,28 @@ const categories = ref([]);
 const emit = defineEmits(["use-template"]);
 
 // 获取分类和模板
-onMounted(() => {
-  service.get("/workflowTemplate/templateList").then((res) => {
-    if (res.status === 200) templates.value = res.data;
-    console.log("获取模板列表:", res.data);
-    res.data.forEach((item) => {
-      getNodeIcons(item.nodesJson, item.id, item.userId);
-    });
-  });
-  service.get("/workflowTemplate/templateCategoryList").then((res) => {
-    if (res.status === 200) categories.value = res.data;
-  });
+onMounted(async () => {
+  const res = await service.get("/workflowTemplate/templateList");
+
+  if (res.status === 200) {
+    templates.value = res.data;
+
+    for (const item of res.data) {
+      const templateNodes = await getTemplateInfo(
+        item.nodesJson,
+        item.id,
+        item.userId,
+      );
+
+      templateInfoList.value.push(templateNodes);
+    }
+  }
+
+  const cate = await service.get("/workflowTemplate/templateCategoryList");
+
+  if (cate.status === 200) {
+    categories.value = cate.data;
+  }
 });
 
 // 给分类加“全部”选项，优先级最大
@@ -202,14 +230,64 @@ const filteredTemplates = computed(() => {
   if (keyword.value) {
     list = list.filter((t) => t.templateName.includes(keyword.value));
   }
+  console.log("list", list);
   return list;
 });
-function getNodeIcons(nodesJson, templateId, userId) {
+async function getTemplateInfo(nodesJson, templateId, userId) {
+  const templateNodes = {
+    templateId,
+    nodeIcons: [],
+    userAvatar: null,
+    userName: null,
+  };
+
   const nodes = JSON.parse(nodesJson);
+
   const nodeIdList = nodes
     .filter((item) => item.data && item.data.nodeId)
     .map((item) => item.data.nodeId);
-  console.log("nodeIdList", nodeIdList, templateId, userId);
+
+  // 获取节点icon
+  const iconPromises = nodeIdList.map((nodeId) =>
+    service.get("/workflowTemplate/getTemplateNodeIcons", {
+      params: { nodeId },
+    }),
+  );
+
+  const iconRes = await Promise.all(iconPromises);
+  templateNodes.nodeIcons = iconRes.map((r) => r.data);
+
+  // 获取用户
+  const user = await service.get(`/user/queryUserById/${userId}`);
+
+  templateNodes.userAvatar = user.data.avatar;
+  templateNodes.userName = user.data.username;
+
+  return templateNodes;
+}
+function getTemplateIcons(templateId) {
+  const info = templateInfoList.value.find((t) => t.templateId === templateId);
+
+  if (!info) return [];
+
+  // 去重
+  const uniqueIcons = [...new Set(info.nodeIcons)];
+
+  // 最多显示5个
+  return uniqueIcons.slice(0, 7);
+}
+
+function getTemplateAvatar(templateId) {
+  const info = templateInfoList.value.find((t) => t.templateId == templateId);
+  return info?.userAvatar || "";
+}
+function getTemplateUsername(templateId) {
+  const info = templateInfoList.value.find((t) => t.templateId == templateId);
+  return info?.userName || "";
+}
+function getCategoryName(categoryId) {
+  const cate = categories.value.find((c) => c.id == categoryId);
+  return cate ? cate.categoryName : "";
 }
 async function deleteTemplate(templateId) {
   const res = await service.delete(`/workflowTemplate/${templateId}`);
@@ -335,12 +413,13 @@ function submitCategory() {
 }
 
 .cover {
-  height: 80px;
+  height: 48px;
   background: linear-gradient(135deg, #5b8cff, #7f9cff);
   border-radius: 6px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 0 12px;
   color: white;
   font-weight: 600;
   margin-bottom: 10px;
@@ -348,19 +427,35 @@ function submitCategory() {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .title {
+  font-size: 16px;
   font-weight: 600;
-  font-size: 15px;
+  color: #303133;
+  line-height: 22px;
+  flex: 1;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .desc {
-  color: #666;
-  margin-bottom: 10px;
-  min-height: 40px;
+  color: #606266;
+  font-size: 13px;
+  line-height: 18px;
+
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .meta {
@@ -368,6 +463,7 @@ function submitCategory() {
   color: #999;
   display: flex;
   justify-content: space-between;
+  flex-direction: column;
   margin-bottom: 10px;
 }
 
@@ -375,5 +471,51 @@ function submitCategory() {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.cate-tag {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+}
+.node-icons {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.node-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.creator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+.stats {
+  display: flex;
+  justify-content: end;
+  gap: 14px;
+  font-size: 12px;
+  color: #666;
+}
+.creator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.username {
+  font-size: 12px;
+  color: #666;
 }
 </style>

@@ -2,7 +2,7 @@
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-header">
-        <h1>Workflow Platform</h1>
+        <h1>自动化工作流平台</h1>
         <p>登录或注册以继续</p>
       </div>
 

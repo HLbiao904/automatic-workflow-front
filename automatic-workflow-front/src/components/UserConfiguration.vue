@@ -72,6 +72,7 @@ async function uploadAvatar(file) {
   const res = await service.post("/user/uploadAvatar", formData);
 
   user.value.avatar = res.data;
+  ElMessage.success("头像上传成功");
 }
 
 /* 校验 */
