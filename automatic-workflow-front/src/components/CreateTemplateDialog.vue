@@ -1,7 +1,11 @@
 <template>
   <div>
     <!-- 新建模板 Dialog -->
-    <el-dialog v-model="visible" title="新建模板" width="500px">
+    <el-dialog
+      v-model="visible"
+      :title="isCreateTemplate ? '保存模版' : '新建模版'"
+      width="500px"
+    >
       <el-form :model="form" :rules="rules" ref="formRef" label-width="90px">
         <el-form-item label="模板名称" prop="templateName">
           <el-input v-model="form.templateName" />
@@ -32,7 +36,9 @@
 
       <template #footer>
         <el-button @click="visible = false"> 取消 </el-button>
-        <el-button type="primary" @click="submit"> 创建 </el-button>
+        <el-button type="primary" @click="submit">
+          {{ isCreateTemplate ? "保存" : "创建" }}
+        </el-button>
       </template>
     </el-dialog>
 
@@ -88,12 +94,17 @@ const categoryForm = ref({
 const props = defineProps({
   modelValue: Boolean,
   categories: Array,
+  templateForm: {
+    type: Object,
+    default: null,
+  },
 });
 
 const emit = defineEmits(["update:modelValue", "submit", "update-categories"]);
 
 const visible = ref(false);
 const formRef = ref(null);
+const isCreateTemplate = ref(false);
 const form = ref({
   templateName: "",
   description: "",
@@ -129,7 +140,16 @@ const categoryRules = {
     },
   ],
 };
-
+watch(
+  () => props.templateForm,
+  (newVal) => {
+    isCreateTemplate.value = true;
+    form.value.templateName = newVal.name;
+    form.value.description = newVal.description;
+    form.value.categoryId = newVal.categoryId;
+  },
+  { deep: true },
+);
 // watch 模板弹窗显示
 watch(
   () => props.modelValue,
@@ -168,6 +188,7 @@ function submit() {
     if (!valid) return;
     emit("submit", { ...form.value });
     visible.value = false;
+    isCreateTemplate.value = false;
   });
 }
 

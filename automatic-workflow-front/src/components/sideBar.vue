@@ -77,7 +77,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed, ref } from "vue";
+import { defineProps, defineEmits, computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -111,6 +111,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  activeMenu: {
+    type: String,
+    default: "",
+  },
 });
 const collapsed = computed(() => !props.showSidebar);
 
@@ -122,6 +126,12 @@ const emit = defineEmits([
   "showInsights",
   "showConfiguration",
 ]);
+watch(
+  () => props.activeMenu,
+  (newVal) => {
+    activeMenu.value = newVal;
+  },
+);
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
 }

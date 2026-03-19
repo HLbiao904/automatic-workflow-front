@@ -185,7 +185,7 @@ const categoryForm = ref({
 
 const templates = ref([]);
 const categories = ref([]);
-const emit = defineEmits(["use-template"]);
+const emit = defineEmits(["use-template", "create-template"]);
 
 // 获取分类和模板
 onMounted(async () => {
@@ -359,20 +359,7 @@ function useTemplate(row) {
 }
 // 新建模板
 function submitTemplate() {
-  service
-    .post("/workflowTemplate/createTemplate", {
-      userId: Number(localStorage.getItem("userId")),
-      templateName: templateForm.value.name,
-      description: templateForm.value.description,
-      categoryId: templateForm.value.categoryId,
-    })
-    .then((res) => {
-      if (res.status === 200) {
-        service.get("/workflowTemplate/templateList").then((res) => {
-          if (res.status === 200) templates.value = res.data;
-        });
-      }
-    });
+  emit("create-template", templateForm.value);
   createDialog.value = false;
 }
 

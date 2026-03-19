@@ -7,6 +7,7 @@ import {
   nextTick,
   watch,
   watchEffect,
+  toRaw,
 } from "vue";
 import { Background } from "@vue-flow/background";
 import { MiniMap } from "@vue-flow/minimap";
@@ -95,6 +96,9 @@ const workflowList = ref([]);
 const showTemplateDialog = ref(false);
 
 const templateCategories = ref([]);
+const isCreateTemplate = ref(false);
+const createTemplateData = ref(null);
+const sideBarActiveMenu = ref("");
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -995,6 +999,26 @@ watch(viewMode, (val) => {
   } else if (val === "versions") {
     versionsPanelRef.value.reload();
   }
+  if (isCreateTemplate.value == true && val != "editor") {
+    const targetViewMode = val;
+    viewMode.value = "editor";
+    ElMessageBox.confirm("模版未保存,是否放弃创建模版?", "提示", {
+      type: "warning",
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      confirmButtonType: "danger",
+    })
+      .then(() => {
+        // 调用删除接口
+        ElMessage.warning("模版未保存");
+        isCreateTemplate.value = false;
+        viewMode.value = targetViewMode;
+      })
+      .catch(() => {
+        viewMode.value = "editor";
+        sideBarActiveMenu.value = "overwrite";
+      });
+  }
 });
 async function onSave() {
   if (saving.value || !isDirty.value) return;
@@ -1027,21 +1051,45 @@ async function onSave() {
   }
 }
 function saveAsTemplate({ templateName, description, categoryId }) {
-  console.log("保存为模板:", templateName, description, categoryId);
-  service
-    .post("/workflowTemplate/createTemplate", {
-      userId: Number(localStorage.getItem("userId")),
-      templateName: templateName,
-      description: description,
-      categoryId: categoryId,
-      nodesJson: JSON.stringify(nodes.value),
-      edgesJson: JSON.stringify(edges.value),
-    })
-    .then((res) => {
-      if (res.status == 200) {
-        ElMessage.success("模板创建成功");
-      }
-    });
+  const isValid = validateGraph(nodes.value, edges.value);
+  if (!isValid) {
+    ElMessage.warning("无效模版");
+    return;
+  }
+  console.log("创建模版保存:", templateName, description, categoryId);
+  if (isCreateTemplate.value == true) {
+    service
+      .post("/workflowTemplate/createTemplate", {
+        userId: Number(localStorage.getItem("userId")),
+        templateName: createTemplateData.value.name,
+        description: createTemplateData.value.description,
+        categoryId: createTemplateData.value.categoryId,
+        nodesJson: JSON.stringify(nodes.value),
+        edgesJson: JSON.stringify(edges.value),
+      })
+      .then((res) => {
+        if (res.status == 200) {
+          ElMessage.success("模板创建成功");
+        }
+      });
+    isCreateTemplate.value = false;
+  } else {
+    console.log("常规模版保存:", templateName, description, categoryId);
+    service
+      .post("/workflowTemplate/createTemplate", {
+        userId: Number(localStorage.getItem("userId")),
+        templateName: templateName,
+        description: description,
+        categoryId: categoryId,
+        nodesJson: JSON.stringify(nodes.value),
+        edgesJson: JSON.stringify(edges.value),
+      })
+      .then((res) => {
+        if (res.status == 200) {
+          ElMessage.success("模板创建成功");
+        }
+      });
+  }
 }
 function updateTemplateCategories(newCategories) {
   templateCategories.value = newCategories;
@@ -1299,6 +1347,12 @@ async function useTemplate(templateData) {
     ElMessage.success("工作流创建成功");
   }
 }
+function createTemplate(templateForm) {
+  viewMode.value = "editor";
+  sideBarActiveMenu.value = "overwrite";
+  isCreateTemplate.value = true;
+  createTemplateData.value = templateForm;
+}
 </script>
 
 <template>
@@ -1318,6 +1372,7 @@ async function useTemplate(templateData) {
     />
     <SideBar
       v-model:showSidebar="showSidebar"
+      :activeMenu="sideBarActiveMenu"
       @showOverwrite="showOverwriteView"
       @showChat="showChatView"
       @showPerson="showPersonView"
@@ -1406,6 +1461,7 @@ async function useTemplate(templateData) {
         <TemplateShowPage
           v-if="viewMode == 'templates'"
           @use-template="useTemplate"
+          @create-template="createTemplate"
         />
         <AiChat v-if="viewMode == 'chat'" />
         <VueFlow
@@ -1537,6 +1593,7 @@ async function useTemplate(templateData) {
     <CreateTemplateDialog
       v-model="showTemplateDialog"
       :categories="templateCategories"
+      :templateForm="createTemplateData"
       @update-categories="updateTemplateCategories"
       @submit="saveAsTemplate"
     />
