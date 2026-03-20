@@ -214,8 +214,8 @@ onMounted(async () => {
 
 // 给分类加“全部”选项，优先级最大
 const sortedCategories = computed(() => {
-  const all = { id: 0, categoryName: "全部", sort: 999 };
-  return [all, ...categories.value].sort((a, b) => b.sort - a.sort);
+  // const all = { id: 0, categoryName: "全部", sort: 999 };
+  return [...categories.value].sort((a, b) => b.sort - a.sort);
 });
 
 // 筛选模板

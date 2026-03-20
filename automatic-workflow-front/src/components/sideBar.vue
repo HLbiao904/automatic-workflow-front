@@ -77,7 +77,14 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed, ref, watch } from "vue";
+import {
+  defineProps,
+  defineEmits,
+  computed,
+  ref,
+  watch,
+  watchEffect,
+} from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -129,9 +136,10 @@ const emit = defineEmits([
 watch(
   () => props.activeMenu,
   (newVal) => {
-    activeMenu.value = newVal;
+    activeMenu.value = newVal.viewMode;
   },
 );
+
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
 }

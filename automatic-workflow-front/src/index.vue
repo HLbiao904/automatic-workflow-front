@@ -98,7 +98,7 @@ const showTemplateDialog = ref(false);
 const templateCategories = ref([]);
 const isCreateTemplate = ref(false);
 const createTemplateData = ref(null);
-const sideBarActiveMenu = ref("");
+const sideBarActiveMenu = ref({ viewMode: "" });
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -1016,7 +1016,7 @@ watch(viewMode, (val) => {
       })
       .catch(() => {
         viewMode.value = "editor";
-        sideBarActiveMenu.value = "overwrite";
+        sideBarActiveMenu.value = { viewMode: "overwrite" };
       });
   }
 });
@@ -1349,7 +1349,7 @@ async function useTemplate(templateData) {
 }
 function createTemplate(templateForm) {
   viewMode.value = "editor";
-  sideBarActiveMenu.value = "overwrite";
+  sideBarActiveMenu.value = { viewMode: "overwrite" };
   isCreateTemplate.value = true;
   createTemplateData.value = templateForm;
 }
