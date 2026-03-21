@@ -413,12 +413,20 @@
               <!-- 普通节点 -->
               <template v-else>
                 <template v-if="hasOutput">
-                  <vue-json-pretty
-                    :data="normalizedOutputData"
-                    :deep="3"
-                    :showLineNumber="true"
-                    :collapsedOnClickBrackets="true"
-                  />
+                  <template v-if="isMarkdownOutput">
+                    <div
+                      class="md-box"
+                      v-html="md.render(String(props.outputData))"
+                    ></div>
+                  </template>
+                  <template v-else>
+                    <vue-json-pretty
+                      :data="normalizedOutputData"
+                      :deep="3"
+                      :showLineNumber="true"
+                      :collapsedOnClickBrackets="true"
+                    />
+                  </template>
                 </template>
                 <template v-else>
                   <div class="empty-box">
@@ -448,6 +456,9 @@ import { ElMessage } from "element-plus";
 import FilePicker from "../components/FilePicker.vue";
 import JsonEditorVue from "json-editor-vue";
 import "vanilla-jsoneditor/themes/jse-theme-dark.css";
+import MarkdownIt from "markdown-it";
+
+const md = new MarkdownIt();
 
 const paramsFormRef = ref(null);
 defineExpose({
@@ -474,7 +485,20 @@ const emit = defineEmits([
   "remove-rule",
   "for-loop-change",
 ]);
+// 是否是 Markdown
+const isMarkdownOutput = computed(() => {
+  if (!props.outputData) return false;
 
+  const str = String(props.outputData);
+
+  // 简单判断（够用了）
+  return (
+    str.includes("#") || // 标题
+    str.includes("```") || // 代码块
+    str.includes("- ") || // 列表
+    str.includes("##") // 二级标题
+  );
+});
 /* ================== 基础状态 ================== */
 
 const running = ref(false);
@@ -679,10 +703,14 @@ const normalizedOutputData = computed(() => {
 
   if (data == null) return [];
 
-  // 先自动解多层 JSON
+  //  如果是 Markdown → 直接返回原始字符串
+  if (isMarkdownOutput.value) {
+    return data;
+  }
+
+  // ===== 原逻辑 =====
   data = tryParseJSON(data);
 
-  // 如果是数组
   if (Array.isArray(data)) {
     return data.map((item) => {
       const parsedItem = tryParseJSON(item);
@@ -695,12 +723,10 @@ const normalizedOutputData = computed(() => {
     });
   }
 
-  // 如果是对象
   if (typeof data === "object" && data !== null) {
     return [data];
   }
 
-  // 普通值
   return [{ _value: data }];
 });
 function extractKeys(obj, prefix = "") {
@@ -1022,5 +1048,29 @@ const hasOutput = computed(
 .json-box-inner {
   height: 100%;
   overflow: auto;
+}
+.md-box {
+  padding: 10px;
+  line-height: 1.6;
+}
+
+.md-box h1,
+.md-box h2,
+.md-box h3 {
+  margin-top: 10px;
+}
+
+.md-box pre {
+  background: #2d2d2d;
+  color: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.md-box code {
+  background: #f5f5f5;
+  padding: 2px 4px;
+  border-radius: 4px;
 }
 </style>

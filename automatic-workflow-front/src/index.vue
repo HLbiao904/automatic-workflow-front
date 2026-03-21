@@ -338,6 +338,7 @@ function clickReplaceNode(node) {
           defaultValue: p.defaultValue ?? null,
         })) ?? [],
       description: node.description,
+      icon: node.icon,
     },
   };
   if (needNewId) {
