@@ -167,16 +167,35 @@ onMounted(loadVersions);
             }}
           </div>
           <div class="version-meta">
-            <span class="createBy">
-              创建者:{{
-                versions.find((v) => v.id === activeVersionId)?.createdBy
-              }}
-            </span>
-            <span class="createBy">
-              执行次数:{{
-                versions.find((v) => v.id === activeVersionId)?.executionCount
-              }}
-            </span>
+            <!-- 用户信息 -->
+            <div class="user-info">
+              <img
+                class="avatar"
+                :src="
+                  versions.find((v) => v.id === activeVersionId)?.avatar ||
+                  'https://via.placeholder.com/40'
+                "
+              />
+              <div class="user-text">
+                <div class="username">
+                  {{
+                    versions.find((v) => v.id === activeVersionId)?.username ||
+                    "未知用户"
+                  }}
+                </div>
+                <div class="label">创建者</div>
+              </div>
+            </div>
+
+            <!-- 执行次数 -->
+            <div class="meta-item">
+              <span class="meta-label">执行</span>
+              <span class="meta-value">
+                {{
+                  versions.find((v) => v.id === activeVersionId)?.executionCount
+                }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -311,44 +330,82 @@ onMounted(loadVersions);
 .version-info {
   top: 16px;
   left: 16px;
-  padding: 12px 16px;
-  border-radius: 14px;
+  padding: 14px 18px;
+  border-radius: 16px;
 
-  /* 关键：更透明 + 毛玻璃 */
   background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
 
-  /* 轻描边 + 阴影 */
   border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-
-  user-select: none;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
 
   .version-date {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: #303133;
-    margin-bottom: 8px;
-    letter-spacing: 0.2px;
+    margin-bottom: 10px;
   }
 
   .version-meta {
     display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* 用户信息 */
+  .user-info {
+    display: flex;
+    align-items: center;
     gap: 10px;
-    font-size: 12px;
-    color: #606266;
 
-    .createBy {
-      padding: 3px 8px;
-      border-radius: 6px;
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
 
-      /* 更柔和的标签 */
-      background: rgba(64, 158, 255, 0.15);
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .user-text {
+      display: flex;
+      flex-direction: column;
+
+      .username {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1f2937;
+      }
+
+      .label {
+        font-size: 11px;
+        color: #9ca3af;
+      }
+    }
+  }
+
+  /* 执行次数 */
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 4px 10px;
+    border-radius: 8px;
+
+    background: rgba(64, 158, 255, 0.12);
+
+    .meta-label {
+      font-size: 12px;
       color: #409eff;
-      font-weight: 500;
-      white-space: nowrap;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1f2937;
     }
   }
 }

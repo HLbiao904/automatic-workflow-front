@@ -342,6 +342,7 @@ function preview(row) {
         ...row,
       };
       preViewData.value.username = res.data.username;
+      preViewData.value.avatar = res.data.avatar;
     }
   });
 }

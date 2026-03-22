@@ -22,7 +22,13 @@
 
       <div class="card">
         <h3>平均运行时间</h3>
-        <p>{{ Math.floor(overview.avgDuration) }}ms</p>
+        <p>
+          {{
+            overview.avgDuration >= 1000
+              ? (overview.avgDuration / 1000).toFixed(1) + " s"
+              : Math.floor(overview.avgDuration) + " ms"
+          }}
+        </p>
       </div>
     </div>
 
@@ -130,7 +136,16 @@ function initTrend(data) {
 
   chart.setOption({
     title: { text: "执行趋势" },
-
+    tooltip: {
+      trigger: "axis",
+      formatter: function (params) {
+        const item = params[0];
+        return `
+          日期：${item.name}<br/>
+          执行次数：${item.value}
+        `;
+      },
+    },
     xAxis: {
       type: "category",
       data: data.map((i) => i.day),
@@ -142,6 +157,12 @@ function initTrend(data) {
       {
         type: "line",
         data: data.map((i) => i.runCount),
+        // smooth: true,
+
+        label: {
+          show: true,
+          position: "top",
+        },
       },
     ],
   });
@@ -150,15 +171,51 @@ function initTrend(data) {
 function initStatus(data) {
   const chart = echarts.init(document.getElementById("statusChart"));
 
+  const statusMap = {
+    SUCCESS: "成功",
+    ERROR: "失败",
+    RUNNING: "运行中",
+  };
+
+  const colorMap = {
+    SUCCESS: "#67C23A", // 绿色
+    ERROR: "#F56C6C", // 红色
+    RUNNING: "#409EFF", // 蓝色
+  };
+
   chart.setOption({
     title: { text: "状态分布" },
+
+    tooltip: {
+      trigger: "item",
+      formatter: function (params) {
+        return `
+          ${params.name}<br/>
+          数量：${params.value}<br/>
+          占比：${params.percent}%
+        `;
+      },
+    },
+
+    legend: {
+      bottom: 0,
+    },
 
     series: [
       {
         type: "pie",
+        radius: ["40%", "70%"],
+
+        label: {
+          formatter: "{b}: {d}%",
+        },
+
         data: data.map((i) => ({
-          name: i.status,
+          name: statusMap[i.status] || i.status,
           value: i.count,
+          itemStyle: {
+            color: colorMap[i.status] || "#ccc", //  核心
+          },
         })),
       },
     ],
@@ -167,16 +224,49 @@ function initStatus(data) {
 
 function initNodeRank(data) {
   const chart = echarts.init(document.getElementById("nodeRankChart"));
+  const visibleCount = 10;
+  const total = data.length;
 
+  const endPercent = (visibleCount / total) * 100;
   chart.setOption({
     title: { text: "节点运行排名" },
+    tooltip: {
+      trigger: "axis",
+      formatter: function (params) {
+        const item = params[0];
+        return `
+      节点：${item.name}<br/>
+      运行次数：${item.value}
+    `;
+      },
+    },
+    grid: {
+      left: 120, //  给y轴留空间
+    },
+
+    dataZoom: [
+      {
+        type: "inside", // 鼠标滚动
+        yAxisIndex: 0,
+        start: 0,
+        end: endPercent,
+      },
+      {
+        type: "slider", // 右侧滚动条
+        yAxisIndex: 0,
+        start: 0,
+        end: endPercent,
+      },
+    ],
 
     xAxis: { type: "value" },
 
     yAxis: {
       type: "category",
       data: data.map((i) => i.nodeName),
-      axisLabel: { interval: 0 },
+      axisLabel: {
+        interval: 0,
+      },
     },
 
     series: [
@@ -190,16 +280,70 @@ function initNodeRank(data) {
 
 function initNodeTime(data) {
   const chart = echarts.init(document.getElementById("nodeTimeChart"));
+  const visibleCount = 10;
+  const total = data.length;
 
+  const endPercent = (visibleCount / total) * 100;
   chart.setOption({
     title: { text: "节点平均时间" },
+    tooltip: {
+      trigger: "axis",
+      formatter: function (params) {
+        const item = params[0];
+        let value = item.value;
 
-    xAxis: { type: "value" },
+        let display;
+
+        if (value >= 1000) {
+          display = (value / 1000).toFixed(1) + " s"; //  转秒
+        } else {
+          display = value.toFixed(1) + " ms"; //  保留1位小数
+        }
+
+        return `
+    节点：${item.name}<br/>
+    平均耗时：${display}
+  `;
+      },
+    },
+    grid: {
+      left: 120, //  给节点名称留空间（很重要）
+    },
+
+    //  核心：纵向滚动
+    dataZoom: [
+      {
+        type: "inside", // 鼠标滚轮滚动
+        yAxisIndex: 0,
+        start: 0,
+        end: endPercent,
+      },
+      {
+        type: "slider", // 右侧滚动条
+        yAxisIndex: 0,
+        start: 0,
+        end: endPercent,
+        minSpan: 10, // 最少显示10%
+        maxSpan: 50, // 最多显示50%
+      },
+    ],
+
+    xAxis: {
+      type: "value",
+    },
 
     yAxis: {
       type: "category",
       data: data.map((i) => i.nodeName),
-      axisLabel: { interval: 0 },
+
+      axisLabel: {
+        interval: 0,
+
+        //  防止名字太长撑爆
+        formatter: function (value) {
+          return value.length > 8 ? value.slice(0, 8) + "..." : value;
+        },
+      },
     },
 
     series: [
@@ -229,29 +373,43 @@ function initNodeTime(data) {
 }
 
 .card {
-  background: #f5f5f5;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 14px;
   text-align: center;
+
+  color: #e5e7eb;
+
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
 }
 
 .card h3 {
   margin-bottom: 10px;
-  font-size: 16px;
-  color: #666;
+  font-size: 14px;
+  color: #9ca3af; /* 灰一点更高级 */
 }
 
 .card p {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: bold;
+  color: #f9fafb;
 }
 
 .card.success {
-  background: #e8f5e9;
+  background: linear-gradient(135deg, #064e3b, #022c22);
+  color: #d1fae5;
 }
 
 .card.error {
-  background: #ffebee;
+  background: linear-gradient(135deg, #7f1d1d, #450a0a);
+  color: #fee2e2;
 }
 
 /* 图表 */
@@ -268,6 +426,7 @@ function initNodeTime(data) {
   border-radius: 10px;
   padding: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
 /* 表格 */
