@@ -4,10 +4,10 @@
       <div class="logo" v-if="!collapsed">
         <img src="../assets/logo.png" />
       </div>
-      <div class="item-group header-icons" @click="toggle">
+      <div class="item-group header-icons">
         <img src="../assets/sideBarAdd.svg" />
         <img src="../assets/sideBarSearch.svg" />
-        <img src="../assets/sidebar.svg" />
+        <img src="../assets/sidebar.svg" @click="toggle" />
       </div>
     </div>
     <div class="center item">

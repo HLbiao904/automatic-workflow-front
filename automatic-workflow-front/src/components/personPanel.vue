@@ -43,43 +43,54 @@
 
           <!-- workflow 列表 -->
           <div class="workflow-list">
-            <div
-              v-for="item in filteredWorkflows"
-              :key="item.id"
-              class="workflow-item"
-              @click="goExistingWorkflow(item.name, item.id)"
-            >
-              <div class="workflow-left">
-                <div class="workflow-main">
-                  <span class="workflow-name">{{ item.name }}</span>
-                  <span class="workflow-desc">
-                    {{ item.description || "暂无描述" }}
-                  </span>
-                </div>
-
-                <div class="workflow-meta">
-                  <span>创建于：{{ formatTime(item.createdAt) }}</span>
-                  <span>更新于：{{ formatTime(item.updatedAt) }}</span>
-                </div>
-              </div>
-
-              <!-- 三个点 -->
-              <el-dropdown
-                trigger="click"
-                @command="handleDropdownCommand(item, $event)"
+            <template v-if="filteredWorkflows && filteredWorkflows.length > 0">
+              <div
+                v-for="item in filteredWorkflows"
+                :key="item.id"
+                class="workflow-item"
+                @click="goExistingWorkflow(item.name, item.id)"
               >
-                <template #default>
-                  <span class="more-btn" @click.stop>⋯</span>
-                </template>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="rename"> 修改 </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided class="danger">
-                      删除
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+                <div class="workflow-left">
+                  <div class="workflow-main">
+                    <span class="workflow-name">{{ item.name }}</span>
+                    <span class="workflow-desc">
+                      {{ item.description || "暂无描述" }}
+                    </span>
+                  </div>
+
+                  <div class="workflow-meta">
+                    <span>创建于：{{ formatTime(item.createdAt) }}</span>
+                    <span>更新于：{{ formatTime(item.updatedAt) }}</span>
+                  </div>
+                </div>
+
+                <!-- 三个点 -->
+                <el-dropdown
+                  trigger="click"
+                  @command="handleDropdownCommand(item, $event)"
+                >
+                  <template #default>
+                    <span class="more-btn" @click.stop>⋯</span>
+                  </template>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="rename">
+                        修改
+                      </el-dropdown-item>
+                      <el-dropdown-item command="delete" divided class="danger">
+                        删除
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+            <div v-else class="empty-panel">
+              <el-empty description="暂无工作流">
+                <el-button type="primary" @click="showCreateDialog = true">
+                  创建工作流
+                </el-button>
+              </el-empty>
             </div>
           </div>
         </el-tab-pane>
@@ -313,7 +324,7 @@ const filterForm = ref({
 });
 
 const form = ref({
-  name: "My workflow",
+  name: "",
   description: "",
 });
 const createFormRules = {
@@ -675,11 +686,13 @@ function handleTabClick(tab) {
 function formatTime(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
-    d.getMinutes(),
-  ).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+    2,
+    "0",
+  )}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(
+    2,
+    "0",
+  )}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 </script>
 

@@ -109,12 +109,13 @@ async function handleLogin() {
     ElMessage.warning("请输入用户名和密码");
     return;
   }
-
   const res = await service.post("/user/login", loginForm.value);
-  if (res.status === 200 && res.data) {
+  const result = res.data;
+  if (res.status == 200 && result?.data?.token && result?.data?.user) {
     // 设置当前登录用户id
-    localStorage.setItem("userId", res.data.id);
-    localStorage.setItem("userName", res.data.username);
+    localStorage.setItem("userId", result.data.user.id);
+    localStorage.setItem("userName", result.data.user.username);
+    localStorage.setItem("token", result.data.token);
     ElMessage.success("登录成功");
     // 跳转到首页
     router.push("/");
