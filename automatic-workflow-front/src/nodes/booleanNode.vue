@@ -21,7 +21,8 @@
     </div>
     <div class="boolean-node">
       <div class="node-body">
-        <img v-if="data.icon" :src="data.icon" class="node-icon" />
+        <img v-if="data.localIcon" :src="data.localIcon" class="node-icon" />
+        <img v-else-if="data.icon" :src="data.icon" class="node-icon" />
         <img v-else src="../assets/flagBoolean.svg" class="node-icon" />
       </div>
 

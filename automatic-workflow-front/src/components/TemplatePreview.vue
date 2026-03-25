@@ -175,7 +175,7 @@ watch(
       .then((res) => {
         const map = {};
         res.data.forEach((i) => {
-          map[i.label] = i.icon;
+          map[i.label] = i.localIcon || i.icon;
         });
         nodeIconMap.value = map;
       });
@@ -201,10 +201,14 @@ function draftTemplate() {
 }
 
 function deleteTemplate() {
-  ElMessageBox.confirm("确定删除这个模板吗？", "删除确认", {
+  ElMessageBox.confirm("确定要删除该模板吗？", "删除确认", {
+    confirmButtonText: "删除",
+    cancelButtonText: "取消",
+    confirmButtonClass: "el-button--danger",
     type: "warning",
   }).then(() => {
     emit("delete", props.preViewData.id);
+    handleClose();
   });
 }
 // 弹窗关闭事件

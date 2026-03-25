@@ -193,7 +193,6 @@ onMounted(async () => {
 
   if (res.status === 200) {
     templates.value = res.data;
-
     for (const item of res.data) {
       const templateNodes = await getTemplateInfo(
         item.nodesJson,
@@ -256,8 +255,14 @@ async function getTemplateInfo(nodesJson, templateId, userId) {
     "/workflowTemplate/getTemplateNodeIconsByNodeIdList",
     nodeIdList,
   );
-
-  templateNodes.nodeIcons = iconRes.data;
+  console.log("iconRes", iconRes);
+  const OssIcons = []; //云图标
+  const localIcons = []; //本地图标
+  iconRes.data.forEach((item) => {
+    OssIcons.push(item.icon);
+    localIcons.push(item.local_icon);
+  });
+  templateNodes.nodeIcons = localIcons || OssIcons;
 
   // 获取用户信息
   const user = await service.get(`/user/queryUserById/${userId}`);

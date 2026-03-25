@@ -167,9 +167,13 @@ watch(
 );
 
 function getIcon(n) {
-  // 1 优先使用网络icon
-  if (n.icon) return n.icon;
-  // 2 fallback本地图标
+  // 优先使用本地icon
+  if (n.localIcon) {
+    return n.localIcon;
+  } else if (n.icon) {
+    return n.icon; // 其次使用oss图标
+  }
+  // 默认本地图标
   switch ((n.type || "").toUpperCase()) {
     case "COMMON":
       return commonIcon;

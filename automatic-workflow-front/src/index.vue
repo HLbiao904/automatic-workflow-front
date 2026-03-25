@@ -221,6 +221,7 @@ function startDrag(template) {
         })),
         description: template.description,
         icon: template.icon,
+        localIcon: template.localIcon,
       },
     });
     isDirty.value = true;
@@ -250,6 +251,7 @@ function addNodeToEditor(node) {
       })),
       description: node.description,
       icon: node.icon,
+      localIcon: template.localIcon,
     },
   });
 }
@@ -339,6 +341,7 @@ function clickReplaceNode(node) {
         })) ?? [],
       description: node.description,
       icon: node.icon,
+      localIcon: node.localIcon,
     },
   };
   if (needNewId) {

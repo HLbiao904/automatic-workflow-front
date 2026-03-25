@@ -11,8 +11,8 @@
         <template #default="{ row }">
           <img
             accept="image/png,image/jpeg,image/svg+xml"
-            v-if="row.icon"
-            :src="row.icon"
+            v-if="row.localIcon || row.icon"
+            :src="row.localIcon || row.icon"
             style="width: 32px; height: 32px"
           />
           <span v-else>无</span>
@@ -21,13 +21,25 @@
 
       <el-table-column label="操作">
         <template #default="{ row }">
-          <el-upload
-            :show-file-list="false"
-            :before-upload="checkFile"
-            :http-request="(file) => uploadIcon(file, row)"
-          >
-            <el-button size="small" type="primary"> 上传图标 </el-button>
-          </el-upload>
+          <div style="display: flex; gap: 10px">
+            <!-- 上传到阿里云 -->
+            <el-upload
+              :show-file-list="false"
+              :before-upload="checkFile"
+              :http-request="(file) => uploadOss(file, row)"
+            >
+              <el-button size="small" type="primary"> 云图标 </el-button>
+            </el-upload>
+            <!-- 上传到本地 -->
+            <el-upload
+              style="margin-left: 10px"
+              :show-file-list="false"
+              :before-upload="checkFile"
+              :http-request="(file) => uploadLocal(file, row)"
+            >
+              <el-button size="small" type="primary"> 本地图标 </el-button>
+            </el-upload>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -65,7 +77,7 @@ function checkFile(file) {
   return true;
 }
 
-async function uploadIcon(file, row) {
+async function uploadOss(file, row) {
   const formData = new FormData();
   formData.append("file", file.file);
   formData.append("nodeId", row.nodeId);
@@ -73,5 +85,16 @@ async function uploadIcon(file, row) {
   const res = await service.post("/nodes/uploadIcon", formData);
 
   row.icon = res.data.url;
+}
+async function uploadLocal(file, row) {
+  const formData = new FormData();
+  formData.append("file", file.file);
+  formData.append("nodeId", row.nodeId);
+
+  const res = await service.post("/nodes/uploadLocalIcon", formData);
+  // 返回本地路径
+  row.localIcon = res.data.url;
+
+  ElMessage.success("本地图标上传成功");
 }
 </script>

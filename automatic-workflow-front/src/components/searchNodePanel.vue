@@ -149,38 +149,6 @@ function getNodeIcon(type) {
       return commonIcon;
   }
 }
-/* async function getNodeIcon(type, nodeId) {
-  try {
-    const res = await service.get("/workflowTemplate/getTemplateNodeIcons", {
-      params: { nodeId },
-    });
-
-    const iconUrl = res?.data;
-
-    // 如果后端返回了icon地址
-    if (iconUrl) {
-      return iconUrl;
-    }
-  } catch (e) {
-    console.error("获取节点icon失败", e);
-  }
-
-  // 没有网络icon时使用本地icon
-  switch ((type || "").toUpperCase()) {
-    case "COMMON":
-      return commonIcon;
-    case "SWITCH":
-      return switchIcon;
-    case "FOR":
-      return forIcon;
-    case "WHEN":
-      return whenIcon;
-    case "BOOLEAN":
-      return booleanIcon;
-    default:
-      return commonIcon;
-  }
-} */
 </script>
 
 <template>
@@ -222,7 +190,10 @@ function getNodeIcon(type) {
             <div class="node-content">
               <!-- 左侧图标 -->
               <div class="node-icon">
-                <img :src="n.icon || getNodeIcon(n.type)" alt="icon" />
+                <img
+                  :src="n.localIcon || n.icon || getNodeIcon(n.type)"
+                  alt="icon"
+                />
               </div>
               <div class="node-text">
                 <div class="node-row">

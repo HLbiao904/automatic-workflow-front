@@ -35,7 +35,8 @@
           <img class="error-icon" src="../assets/error.svg" />
         </div>
 
-        <img v-if="data.icon" :src="data.icon" class="node-icon" />
+        <img v-if="data.localIcon" :src="data.localIcon" class="node-icon" />
+        <img v-else-if="data.icon" :src="data.icon" class="node-icon" />
         <img v-else src="../assets/code-solid-full.svg" class="node-icon" />
       </div>
       <Handle

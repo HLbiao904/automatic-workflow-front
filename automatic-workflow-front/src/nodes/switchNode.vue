@@ -22,7 +22,8 @@
 
     <div class="switch-node" :style="{ height: nodeHeight + 'px' }">
       <div class="node-body">
-        <img v-if="data.icon" :src="data.icon" class="node-icon" />
+        <img v-if="data.localIcon" :src="data.localIcon" class="node-icon" />
+        <img v-else-if="data.icon" :src="data.icon" class="node-icon" />
         <img v-else src="../assets/flagSwitch.svg" class="node-icon" />
       </div>
       <Handle id="in" type="target" :position="Position.Left" />
