@@ -128,11 +128,9 @@ const searchData = computed(() => {
       .toLowerCase()
       .includes(kw),
   );
-
   const workflows = props.workflows.filter((w) =>
     [w.name, w.description].join(" ").toLowerCase().includes(kw),
   );
-
   return { nodes, workflows };
 });
 
@@ -167,9 +165,8 @@ watch(
 );
 
 function getIcon(n) {
-  // 优先使用本地icon
   if (n.localIcon) {
-    return n.localIcon;
+    return n.localIcon; // 优先使用本地icon
   } else if (n.icon) {
     return n.icon; // 其次使用oss图标
   }

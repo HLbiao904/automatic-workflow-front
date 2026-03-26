@@ -90,18 +90,18 @@ function compileNodeWithData(node) {
     ElMessage.primary(`节点 ${flowNodeId} 缺少 data.nodeId`);
   }
 
-  /** 1️⃣ 固定字段 */
+  /** 固定字段 */
   const baseFields = [`id=${flowNodeId}`, `nodeId=${nodeId}`, `type=${type}`];
 
-  /** 2️⃣ 动态参数 */
+  /** 动态参数 */
   const paramFields = params
     .filter((p) => p.value !== undefined && p.value !== "")
     .map((p) => `${p.name}=${p.value}`);
 
-  /** 3️⃣ 合并 */
+  /** 合并 */
   const allFields = [...baseFields, ...paramFields];
 
-  /** 4️⃣ 没有任何 data 的兜底 */
+  /** 没有任何 data 的兜底 */
   if (allFields.length === 0) {
     return nodeId;
   }

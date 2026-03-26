@@ -6,7 +6,7 @@
       </div>
       <div class="item-group header-icons">
         <img src="../assets/sideBarAdd.svg" />
-        <img src="../assets/sideBarSearch.svg" />
+        <img src="../assets/sideBarSearch.svg" @click="showSearchDialog" />
         <img src="../assets/sidebar.svg" @click="toggle" />
       </div>
     </div>
@@ -119,7 +119,7 @@ const props = defineProps({
     default: true,
   },
   activeMenu: {
-    type: String,
+    type: Object,
     default: "",
   },
 });
@@ -132,6 +132,8 @@ const emit = defineEmits([
   "showChat",
   "showInsights",
   "showConfiguration",
+  "showTemplates",
+  "showGlobalSearchDialog",
 ]);
 watch(
   () => props.activeMenu,
@@ -142,6 +144,9 @@ watch(
 
 function toggle() {
   emit("update:showSidebar", !props.showSidebar);
+}
+function showSearchDialog() {
+  emit("showGlobalSearchDialog");
 }
 function handleConfig(command) {
   if (command === "node") {

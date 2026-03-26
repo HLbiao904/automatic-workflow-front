@@ -24,6 +24,7 @@
     "dagre": "^0.8.5",
     "echarts": "^6.0.0",
     "element-plus": "^2.13.1",
+    "fuse.js": "^7.1.0",
     "github-markdown-css": "^5.9.0",
     "json-editor-vue": "^0.18.1",
     "markdown-it": "^14.1.1",

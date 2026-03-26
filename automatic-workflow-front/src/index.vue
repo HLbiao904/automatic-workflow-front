@@ -51,7 +51,9 @@ import TemplateShowPage from "./components/TemplateShowPage.vue";
 import CreateTemplateDialog from "./components/CreateTemplateDialog.vue";
 import NodeConfiguration from "./components/NodeConfiguration.vue";
 import UserConfiguration from "./components/UserConfiguration.vue";
+import CommandPalette from "./components/CommandPalette.vue";
 import { ElMessage } from "element-plus";
+import { useCommandStore } from "./stores/command.js";
 
 const {
   project,
@@ -62,6 +64,7 @@ const {
   fitView,
   viewportInitialized,
 } = useVueFlow();
+const commandStore = useCommandStore();
 const activeNode = ref(null);
 const showNodesDialog = ref(false);
 const edges = ref([]);
@@ -130,6 +133,7 @@ onMounted(async () => {
         params: JSON.parse(item.params), // 解析 params 字符串
       };
     });
+    commandStore.nodes = result; // 全局搜索pinia节点数据
     nodeTemplates.value = [...nodeTemplates.value, ...result];
     console.log("Fetched node templates:", nodeTemplates);
   });
@@ -138,6 +142,7 @@ onMounted(async () => {
     params: { userId: localStorage.getItem("userId") },
   });
   workflowList.value = res.data || [];
+  commandStore.workflows = res.data; // 全局搜索pinia工作流列表数据
   // 初始化 STOMP 客户端
   const socket = new SockJS("/ws");
   stompClient = new Client({
@@ -166,6 +171,14 @@ onMounted(async () => {
       templateCategories.value = [...res.data];
     }
   });
+  const templateRes = await service.get("/workflowTemplate/templateList");
+  commandStore.templates = templateRes.data; // 全局搜索pinia模版列表数据
+  const sessionRes = await service.get("/chat/sessionHistory/list", {
+    params: {
+      userId: localStorage.getItem("userId"),
+    },
+  });
+  commandStore.sessions = sessionRes.data;
 });
 
 const groupedNodes = computed(() => {
@@ -251,7 +264,7 @@ function addNodeToEditor(node) {
       })),
       description: node.description,
       icon: node.icon,
-      localIcon: template.localIcon,
+      localIcon: node.localIcon,
     },
   });
 }
@@ -1095,6 +1108,9 @@ function saveAsTemplate({ templateName, description, categoryId }) {
       });
   }
 }
+function showGlobalSearchDialog() {
+  commandStore.visible = true;
+}
 function updateTemplateCategories(newCategories) {
   templateCategories.value = newCategories;
 }
@@ -1346,6 +1362,11 @@ async function useTemplate(templateData) {
     name: templateData.templateName,
     description: templateData.description,
   });
+  //使用模版,次数加一
+  const result = await service.post(`/workflowTemplate/use/${templateData.id}`);
+  if (result.status == 200) {
+    ElMessage.success("使用模版成功");
+  }
   if (res.status == 200) {
     currentWorkflowId.value = res.data.id;
     ElMessage.success("工作流创建成功");
@@ -1383,6 +1404,7 @@ function createTemplate(templateForm) {
       @showInsights="showInsightsView"
       @showTemplates="showTemplatesView"
       @showConfiguration="showConfigurationView"
+      @showGlobalSearchDialog="showGlobalSearchDialog"
     />
     <div class="nodeButtonWrapper" v-if="viewMode == 'editor'">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
@@ -1577,7 +1599,7 @@ function createTemplate(templateForm) {
     </div>
 
     <ParamsDialog
-      v-show="showParamsDialog"
+      v-model="showParamsDialog"
       ref="paramsDialogRef"
       v-model:showParamsDialog="showParamsDialog"
       :paramsDialogFormData="paramsDialogFormData"
@@ -1601,6 +1623,7 @@ function createTemplate(templateForm) {
       @update-categories="updateTemplateCategories"
       @submit="saveAsTemplate"
     />
+    <CommandPalette :viewMode="viewMode" />
   </div>
 </template>
 
