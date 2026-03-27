@@ -70,7 +70,6 @@ import {
   nextTick,
 } from "vue";
 import { useRoute } from "vue-router";
-import dayjs from "dayjs";
 import Fuse from "fuse.js";
 import { useCommandStore } from "../stores/command";
 
@@ -93,54 +92,96 @@ const props = defineProps({
     default: "editor",
   },
 });
+const emit = defineEmits(["changeViewMode"]);
+/* ================= 工具函数 ================= */
 
-/* ================= 数据适配（核心） ================= */
+// 统一包装（解决 id 问题）
+function wrap(type, item, nameKey, descKey, fallbackId, weight) {
+  return {
+    type,
+    weight,
+    data: {
+      ...item,
+      id: item.id ?? fallbackId,
+      _name: item[nameKey],
+      _desc: item[descKey] || "",
+    },
+  };
+}
+
+// 去重（核心）
+function unique(list) {
+  const seen = new Set();
+  return list.filter((item) => {
+    const key = `${item.type}_${item.data.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function getKey() {
+  const userId = store.user?.id || "guest";
+  return `cmd_recent_${userId}`;
+}
+// 最近记录
+function getRecent() {
+  return JSON.parse(localStorage.getItem(getKey()) || "[]");
+}
+
+function saveRecent(item) {
+  const key = getKey();
+  const list = getRecent();
+
+  const newList = [
+    item,
+    ...list.filter(
+      (i) => `${i.type}_${i.data.id}` !== `${item.type}_${item.data.id}`,
+    ),
+  ].slice(0, 10);
+
+  localStorage.setItem(key, JSON.stringify(newList));
+}
+/* ================= 数据源 ================= */
+
 const allData = computed(() => {
   const list = [];
 
   if (props.viewMode !== "chat") {
     list.push(
-      ...store.nodes.map((n) => ({
-        type: "node",
-        weight: 3,
-        data: { ...n, _name: n.label, _desc: n.description },
-      })),
+      ...store.nodes.map((n, i) =>
+        wrap("node", n, "label", "description", `node_${i}`, 3),
+      ),
 
-      ...store.workflows.map((w) => ({
-        type: "workflow",
-        weight: 2,
-        data: { ...w, _name: w.name, _desc: w.description },
-      })),
+      ...store.workflows.map((w, i) =>
+        wrap("workflow", w, "name", "description", `workflow_${i}`, 2),
+      ),
 
-      ...store.templates.map((t) => ({
-        type: "template",
-        weight: 1,
-        data: { ...t, _name: t.templateName, _desc: t.description },
-      })),
+      ...store.templates.map((t, i) =>
+        wrap("template", t, "templateName", "description", `template_${i}`, 1),
+      ),
 
-      ...store.configs.map((c, i) => ({
-        type: "config",
-        weight: 0,
-        data: {
-          id: i,
-          _name: typeof c === "string" ? c : c.name,
-          _desc: "",
-        },
-      })),
+      ...store.configs.map((c, i) =>
+        wrap(
+          "config",
+          typeof c === "string" ? { name: c } : c,
+          "name",
+          "",
+          `config_${i}`,
+          0,
+        ),
+      ),
     );
   }
 
   if (props.viewMode === "chat") {
     list.push(
-      ...store.sessions.map((s) => ({
-        type: "session",
-        weight: 2,
-        data: { ...s, _name: s.title, _desc: "" },
-      })),
+      ...store.sessions.map((s, i) =>
+        wrap("session", s, "title", "", `session_${i}`, 2),
+      ),
       {
         type: "action",
         weight: 3,
-        data: { _name: "新建会话", action: "create" },
+        data: { id: "create", _name: "新建会话" },
       },
     );
   }
@@ -148,85 +189,81 @@ const allData = computed(() => {
   return list;
 });
 
-/* ================= 最近使用 ================= */
-function getRecent() {
-  return JSON.parse(localStorage.getItem("cmd_recent") || "[]");
-}
+/* ================= 搜索 ================= */
 
-/* ================= 搜索（Fuse.js） ================= */
 const searchData = computed(() => {
   if (!keyword.value) return null;
 
   const fuse = new Fuse(allData.value, {
     keys: ["data._name", "data._desc"],
-    threshold: 0.4,
+    threshold: 0.35,
+    ignoreLocation: true,
   });
 
   const result = fuse.search(keyword.value).map((r) => r.item);
 
-  // 权重排序 + 最近使用优先
   const recent = getRecent();
 
   return result.sort((a, b) => {
-    const ra = recent.findIndex((r) => r.data.id === a.data.id);
-    const rb = recent.findIndex((r) => r.data.id === b.data.id);
+    const ra = recent.findIndex(
+      (r) => `${r.type}_${r.data.id}` === `${a.type}_${a.data.id}`,
+    );
+    const rb = recent.findIndex(
+      (r) => `${r.type}_${r.data.id}` === `${b.type}_${b.data.id}`,
+    );
 
+    // 最近优先
     if (ra !== -1 || rb !== -1) return ra - rb;
 
+    // 权重
     return b.weight - a.weight;
   });
 });
 
 /* ================= 默认 ================= */
+
 const defaultData = computed(() => {
-  //  chat 模式
   if (props.viewMode === "chat") {
-    return [
+    return unique([
       {
         type: "action",
-        data: { _name: "新建会话", action: "create" },
+        data: { id: "create", _name: "新建会话" },
       },
-
-      ...store.sessions.slice(0, 6).map((s) => ({
-        type: "session",
-        data: { ...s, _name: s.title, _desc: "" },
-      })),
-    ];
+      ...store.sessions
+        .slice(0, 6)
+        .map((s, i) => wrap("session", s, "title", "", `session_${i}`, 2)),
+    ]);
   }
 
-  // editor 模式
-  return [
+  return unique([
     ...getRecent(),
 
-    ...store.nodes.slice(0, 4).map((n) => ({
-      type: "node",
-      data: { ...n, _name: n.label, _desc: n.description },
-    })),
+    ...store.nodes
+      .slice(0, 4)
+      .map((n, i) => wrap("node", n, "label", "description", `node_${i}`, 3)),
 
-    ...store.workflows.slice(0, 2).map((w) => ({
-      type: "workflow",
-      data: { ...w, _name: w.name, _desc: w.description },
-    })),
+    ...store.workflows
+      .slice(0, 2)
+      .map((w, i) =>
+        wrap("workflow", w, "name", "description", `workflow_${i}`, 2),
+      ),
 
-    ...store.templates.slice(0, 2).map((t) => ({
-      type: "template",
-      data: { ...t, _name: t.templateName, _desc: t.description },
-    })),
-
-    ...store.configs.slice(0, 2).map((c, i) => ({
-      type: "config",
-      data: {
-        id: i,
-        _name: typeof c === "string" ? c : c.name,
-        _desc: "",
-      },
-    })),
-  ];
+    ...store.templates
+      .slice(0, 2)
+      .map((t, i) =>
+        wrap("template", t, "templateName", "description", `template_${i}`, 1),
+      ),
+  ]);
 });
 
-const flatResults = computed(() => searchData.value || defaultData.value);
+/* ================= 最终结果 ================= */
+
+const flatResults = computed(() =>
+  unique(searchData.value || defaultData.value),
+);
 
 /* ================= 分组 ================= */
+
 const grouped = computed(() => {
   const map = {
     node: [],
@@ -241,6 +278,7 @@ const grouped = computed(() => {
 });
 
 /* ================= UI ================= */
+
 function getTitle(type) {
   return {
     node: "节点",
@@ -252,7 +290,6 @@ function getTitle(type) {
   }[type];
 }
 
-/* ================= 高亮 ================= */
 function highlight(text) {
   if (!text || !keyword.value) return text;
   return text.replace(
@@ -261,7 +298,6 @@ function highlight(text) {
   );
 }
 
-/* ================= icon ================= */
 function getIcon(n) {
   if (n.localIcon) return n.localIcon;
   if (n.icon) return n.icon;
@@ -281,26 +317,15 @@ function getIcon(n) {
 }
 
 /* ================= 选择 ================= */
+
 function handleSelect(item) {
   saveRecent(item);
-
-  console.log("选择:", item);
-
+  emit("changeViewMode", item);
   close();
 }
 
-/* ================= 最近记录 ================= */
-function saveRecent(item) {
-  const list = getRecent();
-  const newList = [
-    item,
-    ...list.filter((i) => i.data.id !== item.data.id),
-  ].slice(0, 10);
-
-  localStorage.setItem("cmd_recent", JSON.stringify(newList));
-}
-
 /* ================= 键盘 ================= */
+
 function handleKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === "k") {
     e.preventDefault();
@@ -313,12 +338,14 @@ function handleKeyDown(e) {
 
   if (e.key === "ArrowDown") {
     selectedIndex.value = (selectedIndex.value + 1) % flatResults.value.length;
+    scrollIntoView();
   }
 
   if (e.key === "ArrowUp") {
     selectedIndex.value =
       (selectedIndex.value - 1 + flatResults.value.length) %
       flatResults.value.length;
+    scrollIntoView();
   }
 
   if (e.key === "Enter") {
@@ -326,12 +353,20 @@ function handleKeyDown(e) {
   }
 }
 
-onMounted(() => {
-  window.addEventListener("keydown", handleKeyDown);
-});
+/* ================= 滚动跟随 ================= */
+
+function scrollIntoView() {
+  nextTick(() => {
+    const el = document.querySelector(".result-item.active");
+    el?.scrollIntoView({ block: "nearest" });
+  });
+}
+
+onMounted(() => window.addEventListener("keydown", handleKeyDown));
 onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 
 /* ================= 聚焦 ================= */
+
 watch(
   () => store.visible,
   (v) => {
@@ -345,6 +380,7 @@ watch(
 );
 
 /* ================= 关闭 ================= */
+
 function close() {
   store.close();
   keyword.value = "";

@@ -187,6 +187,9 @@ const templates = ref([]);
 const categories = ref([]);
 const emit = defineEmits(["use-template", "create-template"]);
 
+defineExpose({
+  preview,
+});
 // 获取分类和模板
 onMounted(async () => {
   const res = await service.get("/workflowTemplate/templateList");

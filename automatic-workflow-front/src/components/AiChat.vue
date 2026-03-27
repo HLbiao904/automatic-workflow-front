@@ -93,6 +93,10 @@ const showSearchDialog = ref(false);
 const isNewSession = ref(false);
 const activeMenuId = ref(null);
 
+defineExpose({
+  currentSessionId,
+});
+
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
 });
@@ -300,9 +304,7 @@ function switchSession(session) {
   font-size: 14px;
   color: #374151;
   margin-bottom: 4px;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  transition: background 0.15s, color 0.15s;
 
   &:hover {
     background: #f3f4f6;

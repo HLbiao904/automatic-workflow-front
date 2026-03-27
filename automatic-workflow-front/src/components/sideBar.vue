@@ -149,6 +149,7 @@ function showSearchDialog() {
   emit("showGlobalSearchDialog");
 }
 function handleConfig(command) {
+  activeMenu.value = "configuration";
   if (command === "node") {
     emit("showConfiguration", "nodeConfig");
   }

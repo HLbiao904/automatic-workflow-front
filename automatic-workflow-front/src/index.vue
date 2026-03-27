@@ -102,6 +102,8 @@ const templateCategories = ref([]);
 const isCreateTemplate = ref(false);
 const createTemplateData = ref(null);
 const sideBarActiveMenu = ref({ viewMode: "" });
+const templateShowPageRef = ref(null);
+const AIchatRef = ref(null);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -1111,6 +1113,35 @@ function saveAsTemplate({ templateName, description, categoryId }) {
 function showGlobalSearchDialog() {
   commandStore.visible = true;
 }
+function changeViewMode(item) {
+  if (item.type == "node") {
+    if (viewMode.value == "editor") {
+      addNodeToEditor(item.data); // 添加节点到画布
+    }
+  } else if (item.type == "workflow") {
+    showEditorView({ id: item.data.id, name: item.data.name });
+    sideBarActiveMenu.value = { viewMode: "overwrite" };
+  } else if (item.type == "template") {
+    viewMode.value = "templates";
+    sideBarActiveMenu.value = { viewMode: "templates" };
+    nextTick(() => {
+      templateShowPageRef.value.preview(item.data); // 预览模版
+    });
+  } else if (item.type == "session") {
+    sideBarActiveMenu.value = { viewMode: "chat" };
+    nextTick(() => {
+      AIchatRef.value.currentSessionId = item.data.id;
+    });
+    viewMode.value = "chat";
+  } else if (item.type == "config") {
+    sideBarActiveMenu.value = { viewMode: "configuration" };
+    if (item.data.name == "节点配置") {
+      viewMode.value = "nodeConfig";
+    } else if (item.data.name == "用户配置") {
+      viewMode.value = "userConfig";
+    }
+  }
+}
 function updateTemplateCategories(newCategories) {
   templateCategories.value = newCategories;
 }
@@ -1485,11 +1516,12 @@ function createTemplate(templateForm) {
         />
         <Dashboard v-if="viewMode == 'insights'" />
         <TemplateShowPage
+          ref="templateShowPageRef"
           v-if="viewMode == 'templates'"
           @use-template="useTemplate"
           @create-template="createTemplate"
         />
-        <AiChat v-if="viewMode == 'chat'" />
+        <AiChat v-if="viewMode == 'chat'" ref="AIchatRef" />
         <VueFlow
           id="editor-flow"
           v-show="viewMode === 'editor'"
@@ -1623,7 +1655,7 @@ function createTemplate(templateForm) {
       @update-categories="updateTemplateCategories"
       @submit="saveAsTemplate"
     />
-    <CommandPalette :viewMode="viewMode" />
+    <CommandPalette :viewMode="viewMode" @changeViewMode="changeViewMode" />
   </div>
 </template>
 
