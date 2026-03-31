@@ -162,6 +162,9 @@ const showCreateDialog = ref(false);
 const keyword = ref("");
 const sortBy = ref("updatedAt");
 
+defineExpose({
+  showCreateDialog,
+});
 const form = ref({
   name: "",
   description: "",

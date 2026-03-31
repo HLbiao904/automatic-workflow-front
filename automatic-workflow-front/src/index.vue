@@ -106,6 +106,7 @@ const createTemplateData = ref(null);
 const sideBarActiveMenu = ref({ viewMode: "" });
 const templateShowPageRef = ref(null);
 const AIchatRef = ref(null);
+const overwriteViewRef = ref(null);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -965,6 +966,7 @@ const nodes = ref([
 
 function showOverwriteView() {
   viewMode.value = "overwrite";
+  sideBarActiveMenu.value = { viewMode: "overwrite" };
 }
 function showEditorView({ name, id }) {
   viewMode.value = "editor";
@@ -1164,8 +1166,18 @@ function changeViewMode(item) {
     }
   }
 }
-function handleSelect(type) {
-  console.log("选择了:", type);
+function handleDropdownMenuSelect(type) {
+  if (type == "createWorkflow") {
+    showOverwriteView();
+    nextTick(() => {
+      overwriteViewRef.value.showCreateDialog = true;
+    });
+  } else if (type == "createFromTemplate") {
+    viewMode.value = "templates";
+    sideBarActiveMenu.value = { viewMode: "templates" };
+  } else if (type == "importWorkflow") {
+    console.log("导入工作流", type);
+  }
   showDropdownMenu.value = false;
 }
 function updateTemplateCategories(newCategories) {
@@ -1177,7 +1189,6 @@ function saveWorkflow() {
     nodes: nodes.value,
     edges: edges.value || [],
   };
-
   return service.post("/workflow/version/save", payload);
 }
 
@@ -1535,6 +1546,7 @@ function createTemplate(templateForm) {
 
       <div class="content">
         <OverwriteView
+          ref="overwriteViewRef"
           v-if="viewMode == 'overwrite'"
           @goEditor="showEditorView"
         />
@@ -1689,7 +1701,7 @@ function createTemplate(templateForm) {
         :visible="showDropdownMenu"
         :x="dropMenuPos.x"
         :y="dropMenuPos.y"
-        @select="handleSelect"
+        @select="handleDropdownMenuSelect"
       />
     </div>
   </div>

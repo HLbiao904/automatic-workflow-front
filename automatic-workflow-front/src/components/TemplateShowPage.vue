@@ -258,7 +258,7 @@ async function getTemplateInfo(nodesJson, templateId, userId) {
     "/workflowTemplate/getTemplateNodeIconsByNodeIdList",
     nodeIdList,
   );
-  console.log("iconRes", iconRes);
+  // console.log("iconRes", iconRes);
   const OssIcons = []; //云图标
   const localIcons = []; //本地图标
   iconRes.data.forEach((item) => {
