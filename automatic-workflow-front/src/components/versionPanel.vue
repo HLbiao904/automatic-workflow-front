@@ -33,9 +33,9 @@ const props = defineProps({
 defineExpose({
   reload: loadVersions,
 });
-onUpdated(() => {
+/* onUpdated(() => {
   console.log(previewNodes.value, previewEdges.value);
-});
+}); */
 //监听工作流切换,查询该workflow的versions列表
 watch(
   () => props.workflowId,
@@ -67,7 +67,6 @@ async function loadVersions(workflowId = null) {
     versions.value.sort((a, b) => b.version - a.version);
     const version = versions.value[0] ? versions.value[0] : null;
     loadVersion(version);
-    console.log("versions", versions);
   } catch (e) {
     ElMessage.error("加载版本列表失败");
   } finally {

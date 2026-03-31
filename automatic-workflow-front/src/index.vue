@@ -8,6 +8,7 @@ import {
   watch,
   watchEffect,
   toRaw,
+  onBeforeUnmount,
 } from "vue";
 import { Background } from "@vue-flow/background";
 import { MiniMap } from "@vue-flow/minimap";
@@ -54,6 +55,7 @@ import UserConfiguration from "./components/UserConfiguration.vue";
 import CommandPalette from "./components/CommandPalette.vue";
 import { ElMessage } from "element-plus";
 import { useCommandStore } from "./stores/command.js";
+import DropdownMenu from "./components/DropdownMenu.vue";
 
 const {
   project,
@@ -121,12 +123,17 @@ let stompClient = null;
 let setNodesFn = null;
 let projectFn = null;
 
+const showDropdownMenu = ref(false);
+const dropMenuPos = ref({ x: 60, y: 38 });
+const dropDownMenuRef = ref(null);
+
 onMounted(async () => {
   await nextTick();
   const flow = useVueFlow({ id: "editor-flow" });
   setNodesFn = flow.setNodes;
   projectFn = flow.project;
-
+  // 点击空白关闭侧边栏的+下拉列表
+  window.addEventListener("click", handleClickOutside);
   // 获取节点列表
   service.get("api/workflow/getNodes").then((res) => {
     const result = res.data.map((item) => {
@@ -137,7 +144,7 @@ onMounted(async () => {
     });
     commandStore.nodes = result; // 全局搜索pinia节点数据
     nodeTemplates.value = [...nodeTemplates.value, ...result];
-    console.log("Fetched node templates:", nodeTemplates);
+    // console.log("Fetched node templates:", nodeTemplates);
   });
   // 获取工作流列表
   const res = await service.get("/api/workflow/list", {
@@ -182,7 +189,20 @@ onMounted(async () => {
   });
   commandStore.sessions = sessionRes.data;
 });
+onBeforeUnmount(() => {
+  window.removeEventListener("click", handleClickOutside);
+});
+// 点击空白关闭侧边栏的+下拉列表
+const handleClickOutside = (e) => {
+  const isClickMenu = dropDownMenuRef.value?.contains(e.target);
 
+  //  推荐写法（不用 ref）
+  const isClickSidebar = e.target.closest(".add-btn");
+
+  if (!isClickMenu && !isClickSidebar) {
+    showDropdownMenu.value = false;
+  }
+};
 const groupedNodes = computed(() => {
   const map = {};
 
@@ -200,7 +220,6 @@ const groupedNodes = computed(() => {
 
     map[code].nodes.push(node);
   });
-
   // 转数组 + 排序
   return Object.values(map).sort((a, b) => a.categoryOrder - b.categoryOrder);
 });
@@ -1113,6 +1132,9 @@ function saveAsTemplate({ templateName, description, categoryId }) {
 function showGlobalSearchDialog() {
   commandStore.visible = true;
 }
+function showDropdownMenuFun() {
+  showDropdownMenu.value = true;
+}
 function changeViewMode(item) {
   if (item.type == "node") {
     if (viewMode.value == "editor") {
@@ -1141,6 +1163,10 @@ function changeViewMode(item) {
       viewMode.value = "userConfig";
     }
   }
+}
+function handleSelect(type) {
+  console.log("选择了:", type);
+  showDropdownMenu.value = false;
 }
 function updateTemplateCategories(newCategories) {
   templateCategories.value = newCategories;
@@ -1427,6 +1453,7 @@ function createTemplate(templateForm) {
       "
     />
     <SideBar
+      class="sidebar"
       v-model:showSidebar="showSidebar"
       :activeMenu="sideBarActiveMenu"
       @showOverwrite="showOverwriteView"
@@ -1436,6 +1463,7 @@ function createTemplate(templateForm) {
       @showTemplates="showTemplatesView"
       @showConfiguration="showConfigurationView"
       @showGlobalSearchDialog="showGlobalSearchDialog"
+      @showDropdownMenu="showDropdownMenuFun"
     />
     <div class="nodeButtonWrapper" v-if="viewMode == 'editor'">
       <button class="icon-btn" type="primary" @click="showNodesDialog = true">
@@ -1656,6 +1684,14 @@ function createTemplate(templateForm) {
       @submit="saveAsTemplate"
     />
     <CommandPalette :viewMode="viewMode" @changeViewMode="changeViewMode" />
+    <div ref="dropDownMenuRef">
+      <DropdownMenu
+        :visible="showDropdownMenu"
+        :x="dropMenuPos.x"
+        :y="dropMenuPos.y"
+        @select="handleSelect"
+      />
+    </div>
   </div>
 </template>
 

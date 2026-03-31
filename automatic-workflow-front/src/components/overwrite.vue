@@ -194,12 +194,12 @@ const modifyForm = ref({
 });
 
 onMounted(async () => {
-  console.log("获取工作流列表:", localStorage.getItem("userId"));
+  // console.log("获取工作流列表:", localStorage.getItem("userId"));
   const res = await service.get("/api/workflow/list", {
     params: { userId: localStorage.getItem("userId") },
   });
   workflows.value = res.data || [];
-  console.log(workflows.value);
+  // console.log(workflows.value);
 });
 
 function handleDropdownCommand(item, command) {

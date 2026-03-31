@@ -5,7 +5,11 @@
         <img src="../assets/logo.png" />
       </div>
       <div class="item-group header-icons">
-        <img src="../assets/sideBarAdd.svg" />
+        <img
+          class="add-btn"
+          src="../assets/sideBarAdd.svg"
+          @click="showDropdownMenu"
+        />
         <img src="../assets/sideBarSearch.svg" @click="showSearchDialog" />
         <img src="../assets/sidebar.svg" @click="toggle" />
       </div>
@@ -134,6 +138,7 @@ const emit = defineEmits([
   "showConfiguration",
   "showTemplates",
   "showGlobalSearchDialog",
+  "showDropdownMenu",
 ]);
 watch(
   () => props.activeMenu,
@@ -147,6 +152,9 @@ function toggle() {
 }
 function showSearchDialog() {
   emit("showGlobalSearchDialog");
+}
+function showDropdownMenu(event) {
+  emit("showDropdownMenu");
 }
 function handleConfig(command) {
   activeMenu.value = "configuration";

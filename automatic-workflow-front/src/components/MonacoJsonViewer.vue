@@ -14,7 +14,7 @@ const editorContainer = ref(null);
 let editorInstance = null;
 
 onMounted(async () => {
-  const monaco = await loader.init(); // ✅ 注意这里是 loader.init()
+  const monaco = await loader.init(); //  注意这里是 loader.init()
   editorInstance = monaco.editor.create(editorContainer.value, {
     value: props.modelValue,
     language: props.language, // json、javascript、yaml 都可以
