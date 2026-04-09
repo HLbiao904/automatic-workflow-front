@@ -280,7 +280,7 @@ function compileFor(node, edges, nodeMap, graph, options = {}) {
     ElMessage.primary(`For 节点 ${node.id} 缺少 body 分支`);
   }
 
-  // 1️⃣ 编译循环体（一整段）
+  //  编译循环体（一整段）
   const bodySeq = compileSequence(
     bodyEdge.target,
     nodeMap,
@@ -292,7 +292,7 @@ function compileFor(node, edges, nodeMap, graph, options = {}) {
     bodySeq,
     true,
   )})`;
-  // 2️⃣ for 后面还有流程
+  //  for 后面还有流程
   if (nextEdge) {
     const nextSeq = compileSequence(nextEdge.target, nodeMap, graph, options);
     return wrapThen([forExpr, ...nextSeq], true);

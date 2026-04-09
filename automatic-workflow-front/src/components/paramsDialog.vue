@@ -228,7 +228,7 @@
               <el-form
                 ref="paramsFormRef"
                 :model="paramsDialogFormData"
-                label-width="110px"
+                label-width="80px"
               >
                 <el-form-item
                   v-for="p in activeNode?.data?.params || []"
@@ -288,8 +288,8 @@
                   <JsonEditorVue
                     v-else-if="p.component == 'json-editor'"
                     v-model="p.value"
-                    :mode="'code'"
-                    style="height: 200px"
+                    :mode="'tree'"
+                    style="height: 320px"
                   />
                   <el-input
                     v-else-if="p.component == 'dir-path'"
@@ -999,9 +999,10 @@ const hasOutput = computed(
   margin-bottom: 10px;
 }
 .panel-wrapper {
-  height: 80vh;
+  height: 90vh;
   min-height: 600px;
 }
+
 .panel {
   display: flex;
   flex-direction: column;

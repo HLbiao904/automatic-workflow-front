@@ -38,7 +38,7 @@ const select = (type) => {
 <style scoped>
 .dropdown {
   position: fixed;
-  width: 200px;
+  width: 170px;
   background: #fff;
   border: 1px solid #e5e6eb;
   border-radius: 10px;

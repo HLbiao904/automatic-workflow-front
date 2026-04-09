@@ -230,6 +230,7 @@ const activeRuntimeData = computed(() => {
 });
 
 function startDrag(template) {
+  console.log(template)
   const wrapperRect = flowWrapper.value.getBoundingClientRect();
   document.onmouseup = (upEvent) => {
     const position = projectFn({
