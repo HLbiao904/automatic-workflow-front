@@ -6,7 +6,7 @@
 
 import { ElMessage } from "element-plus";
 
-export function compileFlow(nodes, edges, options = {}) {
+export function compileMergeFlow(nodes, edges, options = {}) {
   const nodeMap = buildNodeMap(nodes);
   const graph = buildGraph(edges);
 
@@ -47,6 +47,7 @@ function findStartNode(nodes) {
 function compileNode(nodeId, nodeMap, graph, options = {}) {
   const node = nodeMap[nodeId];
   if (!node) return "";
+
   switch (node.type) {
     case "start": {
       const next = graph[nodeId]?.[0]?.target;
@@ -55,21 +56,24 @@ function compileNode(nodeId, nodeMap, graph, options = {}) {
     }
 
     case "boolean":
-      return compileBoolean(node, graph[nodeId], nodeMap, graph, options);
+      return compileBoolean(node, graph[nodeId] || [], nodeMap, graph, options);
 
     case "switch":
-      return compileSwitch(node, graph[nodeId], nodeMap, graph, options);
+      return compileSwitch(node, graph[nodeId] || [], nodeMap, graph, options);
 
     case "for":
-      return compileFor(node, graph[nodeId], nodeMap, graph, options);
+      return compileFor(node, graph[nodeId] || [], nodeMap, graph, options);
 
     case "when":
-      return compileWhen(node, graph[node.id], nodeMap, graph, options);
+      return compileWhen(node, graph[nodeId] || [], nodeMap, graph, options);
 
     default:
       return compileNodeWithData(node);
   }
 }
+
+/** ---------- 节点表达式 ---------- **/
+
 function appendNodeMeta(expr, node) {
   const flowNodeId = node.id;
   const nodeId = node.data?.nodeId;
@@ -81,27 +85,23 @@ function appendNodeMeta(expr, node) {
 }
 
 function compileNodeWithData(node) {
-  const flowNodeId = node.id; // VueFlow 的 id
-  const nodeId = node.data?.nodeId; // 业务 nodeId
-  const type = node.type; // 节点类型
-  const params = node.data?.params || []; // 原有参数
+  const flowNodeId = node.id;
+  const nodeId = node.data?.nodeId;
+  const type = node.type;
+  const params = node.data?.params || [];
 
   if (!nodeId) {
     ElMessage.primary(`节点 ${flowNodeId} 缺少 data.nodeId`);
   }
 
-  /** 固定字段 */
   const baseFields = [`id=${flowNodeId}`, `nodeId=${nodeId}`, `type=${type}`];
 
-  /** 动态参数 */
   const paramFields = params
     .filter((p) => p.value !== undefined && p.value !== "")
     .map((p) => `${p.name}=${p.value}`);
 
-  /** 合并 */
   const allFields = [...baseFields, ...paramFields];
 
-  /** 没有任何 data 的兜底 */
   if (allFields.length === 0) {
     return nodeId;
   }
@@ -109,26 +109,18 @@ function compileNodeWithData(node) {
   return `${nodeId}.data('${allFields.join(",")}')`;
 }
 
-function compileNext(edges, nodeMap, graph) {
-  if (edges.length === 0) return "";
-  return compileNode(edges[0].target, nodeMap, graph);
-}
-function wrapThen(list, force = false) {
-  if (list.length === 0) return "";
-  if (!force && list.length === 1) return list[0];
-  return `THEN(${list.join(", ")})`;
-}
+/** ---------- 核心序列编译（支持汇聚） ---------- **/
 
-/** ---------- 各节点类型 ---------- **/
 function compileSequence(startNodeId, nodeMap, graph, options = {}) {
   const result = [];
-  const visited = new Set();
+  const visited = options.visited || new Set();
   const stopAt = options.stopAt || new Set();
 
   let current = startNodeId;
 
   while (current) {
     if (visited.has(current)) break;
+
     if (stopAt.has(current)) {
       if (options.includeStop) {
         result.push(compileNode(current, nodeMap, graph, options));
@@ -136,47 +128,66 @@ function compileSequence(startNodeId, nodeMap, graph, options = {}) {
       break;
     }
 
-    // 汇合点检测
-    if (getInDegree(current, graph) > 1) {
-      break;
-    }
-
     const node = nodeMap[current];
     if (!node) break;
 
-    // 控制节点：交回 compileNode（递归核心）
+    // 控制节点 → 递归处理
     if (["boolean", "switch", "for", "when"].includes(node.type)) {
       result.push(compileNode(current, nodeMap, graph));
       break;
     }
 
-    // 普通节点：只 push 一次（带 data）
     result.push(compileNodeWithData(node));
     visited.add(current);
 
     const out = graph[current] || [];
-    if (out.length !== 1) break;
 
-    current = out[0].target;
+    if (out.length === 0) break;
+
+    if (out.length === 1) {
+      current = out[0].target;
+    } else {
+      // ⭐ 多出口 → 分支展开
+      const branches = out.map((e) => {
+        const subSeq = compileSequence(e.target, nodeMap, graph, {
+          ...options,
+          visited: new Set(visited),
+        });
+        return wrapThen(subSeq, true);
+      });
+
+      result.push(...branches);
+      break;
+    }
   }
 
   return result;
 }
 
-function getInDegree(nodeId, graph) {
-  let count = 0;
-  for (const from in graph) {
-    for (const e of graph[from]) {
-      if (e.target === nodeId) count++;
-    }
-  }
-  return count;
+/** ---------- 子流程 ---------- **/
+
+function compileSubFlow(startNodeId, nodeMap, graph, options = {}) {
+  return compileSequence(startNodeId, nodeMap, graph, {
+    ...options,
+    visited: new Set(),
+  });
 }
+
+/** ---------- 工具 ---------- **/
+
+function wrapThen(list, force = false) {
+  if (!list || list.length === 0) return "";
+  if (!force && list.length === 1) return list[0];
+  return `THEN(${list.join(", ")})`;
+}
+
+/** ---------- 控制节点 ---------- **/
+
 function compileWhen(node, edges, nodeMap, graph, options = {}) {
   const parallelEdges = edges.filter((e) => e.sourceHandle === "parallel");
 
-  if (parallelEdges.length < 1) {
-    ElMessage.primary(`WHEN 节点 ${node.id} 至少需要 1 个分支`);
+  if (parallelEdges.length < 2) {
+    ElMessage.primary(`WHEN 节点 ${node.id} 至少需要 2 个并行分支`);
   }
 
   const branches = parallelEdges.map((e) => {
@@ -185,42 +196,6 @@ function compileWhen(node, edges, nodeMap, graph, options = {}) {
   });
 
   return `WHEN(${branches.join(", ")})`;
-  // return appendNodeMeta(expr, node);
-}
-
-function compileSubFlow(startNodeId, nodeMap, graph, options = {}) {
-  const result = [];
-  let current = startNodeId;
-  const visited = new Set();
-
-  while (current && !visited.has(current)) {
-    if (options.stopAt?.has(current)) {
-      if (options.includeStop) {
-        result.push(compileNode(current, nodeMap, graph, options));
-      }
-      break;
-    }
-
-    visited.add(current);
-
-    const node = nodeMap[current];
-    if (!node) break;
-
-    // 控制节点，完整交给 compileNode
-    if (["boolean", "switch", "for", "when"].includes(node.type)) {
-      result.push(compileNode(current, nodeMap, graph));
-      break;
-    }
-
-    result.push(compileNodeWithData(node));
-
-    const out = graph[current] || [];
-    if (out.length !== 1) break;
-
-    current = out[0].target;
-  }
-
-  return result;
 }
 
 function compileBoolean(node, edges, nodeMap, graph, options = {}) {
@@ -231,14 +206,13 @@ function compileBoolean(node, edges, nodeMap, graph, options = {}) {
     ElMessage.primary(`Boolean 节点 ${node.id} 必须有 true / false 分支`);
   }
 
-  const trueSeq = compileSequence(trueEdge.target, nodeMap, graph, options);
-  const falseSeq = compileSequence(falseEdge.target, nodeMap, graph, options);
+  const trueSeq = compileSubFlow(trueEdge.target, nodeMap, graph, options);
+  const falseSeq = compileSubFlow(falseEdge.target, nodeMap, graph, options);
 
   return `IF(${appendNodeMeta(node.data.nodeId, node)}, ${wrapThen(
     trueSeq,
     true,
   )}, ${wrapThen(falseSeq, true)})`;
-  // return appendNodeMeta(expr, node);
 }
 
 function compileSwitch(node, edges, nodeMap, graph, options = {}) {
@@ -250,7 +224,7 @@ function compileSwitch(node, edges, nodeMap, graph, options = {}) {
   let defaultCase = null;
 
   for (const e of edges) {
-    const seq = compileSequence(e.target, nodeMap, graph, options);
+    const seq = compileSubFlow(e.target, nodeMap, graph, options);
     const body = wrapThen(seq, true);
 
     if (e.sourceHandle === "default") {
@@ -268,7 +242,6 @@ function compileSwitch(node, edges, nodeMap, graph, options = {}) {
     expr += `.DEFAULT(${defaultCase})`;
   }
 
-  // return appendNodeMeta(expr, node);
   return expr;
 }
 
@@ -280,24 +253,21 @@ function compileFor(node, edges, nodeMap, graph, options = {}) {
     ElMessage.primary(`For 节点 ${node.id} 缺少 body 分支`);
   }
 
-  //  编译循环体（一整段）
-  const bodySeq = compileSequence(
-    bodyEdge.target,
-    nodeMap,
-    graph,
-    { ...options, stopAt: new Set([node.id]) }, // 非常关键
-  );
+  const bodySeq = compileSequence(bodyEdge.target, nodeMap, graph, {
+    ...options,
+    visited: new Set(),
+    stopAt: new Set([node.id]),
+  });
 
   const forExpr = `FOR(${appendNodeMeta(node.data.nodeId, node)}).DO(${wrapThen(
     bodySeq,
     true,
   )})`;
-  //  for 后面还有流程
+
   if (nextEdge) {
     const nextSeq = compileSequence(nextEdge.target, nodeMap, graph, options);
     return wrapThen([forExpr, ...nextSeq], true);
   }
 
-  // return appendNodeMeta(forExpr, node);
   return forExpr;
 }

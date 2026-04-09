@@ -58,8 +58,8 @@ function validateControl(nodes, edges) {
       }
     }
 
-    if (node.type === "when" && nodeEdges.length < 2) {
-      ElMessage.primary(`WHEN 节点 ${node.id} 至少需要 2 条分支`);
+    if (node.type === "when" && nodeEdges.length < 1) {
+      ElMessage.primary(`WHEN 节点 ${node.id} 至少需要 1 条分支`);
       return false;
     }
   }

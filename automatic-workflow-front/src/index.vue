@@ -56,6 +56,8 @@ import CommandPalette from "./components/CommandPalette.vue";
 import { ElMessage } from "element-plus";
 import { useCommandStore } from "./stores/command.js";
 import DropdownMenu from "./components/DropdownMenu.vue";
+import AiFlowPanel from "./components/AiFlowPanel.vue";
+import { compileMergeFlow } from "./tools/flowMergeCompiler.js";
 
 const {
   project,
@@ -107,6 +109,7 @@ const sideBarActiveMenu = ref({ viewMode: "" });
 const templateShowPageRef = ref(null);
 const AIchatRef = ref(null);
 const overwriteViewRef = ref(null);
+const showAiFlowPanel = ref(false);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -230,7 +233,7 @@ const activeRuntimeData = computed(() => {
 });
 
 function startDrag(template) {
-  console.log(template)
+  console.log(template);
   const wrapperRect = flowWrapper.value.getBoundingClientRect();
   document.onmouseup = (upEvent) => {
     const position = projectFn({
@@ -1447,6 +1450,175 @@ function createTemplate(templateForm) {
   isCreateTemplate.value = true;
   createTemplateData.value = templateForm;
 }
+async function handleAIGenerateFlow(aiFlowData) {
+  const action = await confirmReplaceOrNew();
+
+  if (action === "replace") {
+    // 替换：保留开始节点，清空其他节点和所有连线
+    nodes.value = nodes.value.filter((n) => n.type.toLowerCase() === "start");
+    edges.value = [];
+  } else if (action === "new") {
+    // 新建工作流：清空所有节点和连线
+    nodes.value = [];
+    edges.value = [];
+  }
+
+  const { nodes: aiNodes, edges: aiEdges } = aiFlowData;
+  autoIndex = 0;
+  const nodeTemplateResult = [];
+  aiNodes.forEach((node) => {
+    const nodeTemplate = nodeTemplates.value.find(
+      (n) =>
+        n.type.toLowerCase() === node.type.toLowerCase() &&
+        n.nodeId === node.nodeid,
+    );
+
+    if (nodeTemplate) {
+      nodeTemplateResult.push({
+        ...nodeTemplate,
+        id: node.id,
+      });
+    }
+  });
+
+  // 添加节点
+  nodeTemplateResult.forEach((nodeTemplate) => {
+    autoAddNode(nodeTemplate, aiEdges);
+  });
+
+  // 添加连线
+  aiEdges.forEach((edge, index) => {
+    const sourceNode = nodes.value.find((n) => n.id === edge.source);
+
+    edges.value.push({
+      id: `e-${edge.source}-${edge.target}-${index}`,
+      source: edge.source,
+      target: edge.target,
+
+      sourceHandle: resolveSourceHandle(sourceNode, edge),
+      targetHandle: "in",
+
+      type: "default",
+    });
+  });
+  // 自动布局
+  autoLayout("LR");
+  console.log("AI生成的节点和连线:", nodes.value, edges.value);
+  const elExpression = compileMergeFlow(nodes.value, edges.value);
+  console.log("生成的EL表达式:", elExpression);
+  isDirty.value = true;
+}
+function hasOtherNodes() {
+  return nodes.value.some((node) => node.type.toLowerCase() !== "start");
+}
+
+async function confirmReplaceOrNew() {
+  if (!hasOtherNodes()) return "proceed"; // 画布只有开始节点，直接生成
+
+  try {
+    // 弹窗提示
+    await ElMessageBox.confirm(
+      "当前画布已有节点，您想替换当前工作流还是新建工作流？",
+      "确认操作",
+      {
+        confirmButtonText: "替换当前工作流",
+        cancelButtonText: "新建工作流",
+        type: "warning",
+      },
+    );
+    // 用户点击确认
+    return "replace";
+  } catch {
+    // 用户点击取消
+    return "new";
+  }
+}
+
+let autoIndex = 0; // 全局计数器
+
+function autoAddNode(template, aiEdges) {
+  const colCount = 4;
+  const gapX = 180;
+  const gapY = 120;
+  const startX = 50;
+  const startY = 50;
+
+  const row = Math.floor(autoIndex / colCount);
+  const col = autoIndex % colCount;
+
+  const position = {
+    x: startX + col * gapX,
+    y: startY + row * gapY,
+  };
+
+  autoIndex++;
+
+  let branches = [];
+
+  // 核心：如果是 switch，从 edges 推导 branches
+  if (template.type.toLowerCase() === "switch") {
+    const relatedEdges = aiEdges.filter((e) => e.source === template.id);
+
+    branches = relatedEdges.map((e, index) => ({
+      id: e.label || `case-${index}`,
+    }));
+
+    // 确保有 default
+    if (!branches.some((b) => b.id === "default")) {
+      branches.push({ id: "default" });
+    }
+  }
+
+  nodes.value.push({
+    id: template.id,
+    type: template.type.toLowerCase(),
+    label: template.label,
+    position,
+    data: {
+      nodeId: template.nodeId,
+      params: template.params.map((p) => ({
+        name: p.name,
+        value: p.value ?? "",
+        desc: p.desc ?? "",
+        type: p.type ?? "",
+        component: p.component ?? "",
+        required: p.required ?? false,
+        options: p.options ?? [],
+        defaultValue: p.defaultValue ?? null,
+      })),
+      description: template.description,
+      icon: template.icon,
+      localIcon: template.localIcon,
+
+      // 关键
+      branches,
+    },
+  });
+
+  isDirty.value = true;
+}
+function resolveSourceHandle(node, edge) {
+  if (!node) return "out";
+
+  switch (node.type) {
+    case "boolean":
+      return edge.label === "true" ? "true" : "false";
+
+    case "switch":
+      return edge.label || "default";
+
+    case "when":
+      return "parallel";
+
+    case "for":
+      // 你要约定：label === body / after
+      if (edge.label === "after") return "after";
+      return "body";
+
+    default:
+      return "out"; // common
+  }
+}
 </script>
 
 <template>
@@ -1483,6 +1655,9 @@ function createTemplate(templateForm) {
       </button>
       <button class="icon-btn" type="primary" @click="searchVisible = true">
         <img class="btn-img" src="./assets/searchNode.svg" />
+      </button>
+      <button class="icon-btn" type="primary" @click="showAiFlowPanel = true">
+        <img class="btn-img" src="./assets/nodeIcons/robot.svg" />
       </button>
     </div>
 
@@ -1525,6 +1700,24 @@ function createTemplate(templateForm) {
         @node-drag-start="startDrag"
         @replace-node="clickReplaceNode"
       />
+    </el-drawer>
+    <el-drawer
+      v-if="viewMode == 'editor'"
+      v-model="showAiFlowPanel"
+      direction="rtl"
+      size="25%"
+      :with-header="false"
+      :modal="false"
+      :modal-penetrable="true"
+      :class="['nodes-drawer', { flash: drawerFlash }]"
+    >
+      <div class="drawer-header">
+        <span>AI 助手</span>
+        <el-button circle size="small" @click="showAiFlowPanel = false"
+          ><el-icon><Close /></el-icon
+        ></el-button>
+      </div>
+      <AiFlowPanel @generate-flow="handleAIGenerateFlow" />
     </el-drawer>
 
     <div class="center-panel" ref="flowWrapper">

@@ -181,6 +181,7 @@ async function send() {
     const response = await fetch("http://127.0.0.1:8080/chat", {
       method: "POST",
       headers: {
+        authorization: localStorage.getItem("token"),
         "Content-Type": "application/json",
         Accept: "text/event-stream",
       },
