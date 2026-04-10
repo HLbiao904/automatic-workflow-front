@@ -135,6 +135,7 @@ import ForNode from "../nodes/forNode.vue";
 import WhenNode from "../nodes/whenNode.vue";
 import DefaultEdge from "../components/defaultEdge.vue";
 import service from "../service";
+import { layoutNodes } from "../tools/commonTools.js";
 
 const props = defineProps({
   preViewData: Object,
@@ -161,6 +162,19 @@ const edgeTypes = { default: markRaw(DefaultEdge) };
 const isOwner = computed(() => {
   return props.preViewData?.userId == localStorage.getItem("userId");
 });
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      nextTick(() => {
+        const res = layoutNodes(nodes.value, edges.value, {
+          direction: "LR",
+        });
+        nodes.value = res.nodes;
+      });
+    }
+  },
+);
 // 监听 props 更新
 watch(
   () => props.preViewData,
@@ -180,8 +194,6 @@ watch(
         nodeIconMap.value = map;
       });
     nodeNames.value = names;
-
-    nextTick(() => layoutNodes());
   },
   { deep: true },
 );
@@ -234,30 +246,6 @@ function stripNodeStatus(nodes) {
   });
   return nodes;
 }
-// 自动布局
-function layoutNodes(direction = "LR") {
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: direction, marginx: 50, marginy: 50 });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  nodes.value.forEach((node) => {
-    g.setNode(node.id, { width: 180, height: 60 });
-  });
-  edges.value.forEach((edge) => {
-    g.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(g);
-
-  nodes.value = nodes.value.map((node) => {
-    const { x, y } = g.node(node.id);
-    return { ...node, position: { x: x - 90, y: y - 30 } };
-  });
-}
-
-onMounted(() => {
-  nextTick(() => layoutNodes());
-});
 </script>
 
 <style scoped>

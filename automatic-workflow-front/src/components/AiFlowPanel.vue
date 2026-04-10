@@ -63,8 +63,29 @@
           class="history-item"
           @click="reuseHistory(item)"
         >
-          <div class="history-text">{{ item.prompt }}</div>
-          <div class="history-time">{{ formatTime(item.createdAt) }}</div>
+          <div class="history-content">
+            <!-- 文本 -->
+            <div class="history-text">
+              {{ item.prompt }}
+            </div>
+
+            <!-- 时间（放底部） -->
+            <div class="history-time">
+              {{ formatTime(item.createdAt) }}
+            </div>
+          </div>
+
+          <!-- 右侧操作 -->
+          <div class="history-actions">
+            <el-button
+              size="small"
+              type="primary"
+              text
+              @click.stop="previewFlow(item)"
+            >
+              预览
+            </el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -77,7 +98,7 @@ import { ElMessage } from "element-plus";
 import service from "../service/index.js";
 import validateAndFixFlow from "../tools/AIAutomaticFlowTools.js";
 
-const emit = defineEmits(["generate-success", "apply-flow"]);
+const emit = defineEmits(["generate-success", "apply-flow", "preview-flow"]);
 
 const prompt = ref("");
 const loading = ref(false);
@@ -178,7 +199,10 @@ async function generateFlow() {
     loading.value = false;
   }
 }
-
+// 预览
+function previewFlow(item) {
+  emit("preview-flow", item);
+}
 // 应用到画布
 function applyFlow() {
   emit("apply-flow");
@@ -302,6 +326,7 @@ function formatTime(timeStr) {
   max-height: 140px;
   overflow-y: auto;
   padding-right: 4px;
+  margin-top: 8px;
 }
 
 /* 模板卡片 */
@@ -317,7 +342,7 @@ function formatTime(timeStr) {
 .template-item:hover {
   background: #ecf5ff;
   border-color: #409eff;
-  transform: translateY(-1px);
+  /* transform: translateY(-1px); */
 }
 
 /* 模板文字 */
@@ -350,35 +375,59 @@ function formatTime(timeStr) {
   padding-right: 4px;
 }
 
+/* ===== 历史记录卡片 ===== */
 .history-item {
-  padding: 8px;
-  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 10px 12px;
+  margin-bottom: 6px;
+
+  border-radius: 8px;
+  background: #fafafa;
+  border: 1px solid #eee;
+
   cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 6px;
+  transition: all 0.25s ease;
 }
 
+/* hover 效果 */
 .history-item:hover {
-  background: #f5f7fa;
+  background: #f0f7ff;
+  border-color: #409eff;
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15);
+  /* transform: translateY(-1px); */
 }
 
+.history-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 文本 */
 .history-text {
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
+/* 时间在底部 */
 .history-time {
   font-size: 11px;
   color: #999;
-  margin-top: 2px;
+  margin-top: 6px;
 }
 
-/* ===== 空状态 ===== */
-.empty {
-  font-size: 12px;
-  color: #999;
-  text-align: center;
-  padding: 10px 0;
+/* 右侧按钮 */
+.history-actions {
+  margin-left: 10px;
 }
 
 /* ===== 滚动条美化 ===== */

@@ -28,9 +28,9 @@ import DefaultEdge from "./components/defaultEdge.vue";
 import { compileFlow } from "./tools/compiler.js";
 import { dynamicCompileFlow } from "./tools/dynamicComplier.js";
 import { validateGraph } from "./tools/validate.js";
-import layoutGraph from "./tools/layoutGraph.js";
 // import default controls styles
 import "@vue-flow/controls/dist/style.css";
+import { layoutNodes } from "./tools/commonTools.js";
 
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -59,6 +59,7 @@ import DropdownMenu from "./components/DropdownMenu.vue";
 import AiFlowPanel from "./components/AiFlowPanel.vue";
 import { compileMergeFlow } from "./tools/flowMergeCompiler.js";
 import createWorkflowDialog from "./components/createWorkflowDialog.vue";
+import AIFlowPreview from "./components/AIFlowPreview.vue";
 
 const {
   project,
@@ -115,7 +116,8 @@ const showCreateWorkflowDialog = ref(false);
 // 临时预览（AI生成但未应用）
 const tempNodes = ref([]);
 const tempEdges = ref([]);
-
+const showAIFlowPreview = ref(false);
+const preViewAIFlowData = ref({});
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
@@ -1421,12 +1423,13 @@ async function executeParamsFlow(id, includeStop = false) {
   return res;
 }
 const autoLayout = async (direction) => {
-  nodes.value = layoutGraph(nodes.value, edges.value, direction);
-  await nextTick();
-
-  if (viewportInitialized) {
-    fitView({ padding: 0.3 });
-  }
+  nextTick(() => {
+    const res = layoutNodes(nodes.value, edges.value, {
+      direction: "LR",
+      // compact: true,
+    });
+    nodes.value = res.nodes;
+  });
 };
 async function useTemplate(templateData) {
   viewMode.value = "editor";
@@ -1488,7 +1491,15 @@ async function ApplyAIGenerateFlow() {
 
   isDirty.value = true;
 }
-
+function previewAiFlow(previewData) {
+  const { nodesJson, edgesJson } = previewData;
+  preViewAIFlowData.value = {
+    nodesJson: nodesJson,
+    edgesJson: edgesJson,
+  };
+  showAIFlowPreview.value = true;
+  console.log(JSON.parse(nodesJson), JSON.parse(edgesJson));
+}
 async function handleAIGenerateFlow(aiFlowData, prompt) {
   console.log("AI原始数据:", aiFlowData.nodes, aiFlowData.edges);
   const { nodes: aiNodes, edges: aiEdges } = aiFlowData;
@@ -1778,6 +1789,7 @@ function resolveSourceHandle(node, edge) {
       <AiFlowPanel
         @generate-success="handleAIGenerateFlow"
         @apply-flow="ApplyAIGenerateFlow"
+        @preview-flow="previewAiFlow"
       />
     </el-drawer>
 
@@ -1962,6 +1974,10 @@ function resolveSourceHandle(node, edge) {
     <CreateWorkflowDialog
       v-model="showCreateWorkflowDialog"
       @goEditor="handleCreateSuccess"
+    />
+    <AIFlowPreview
+      v-model:visible="showAIFlowPreview"
+      :preViewData="preViewAIFlowData"
     />
   </div>
 </template>

@@ -46,26 +46,45 @@ function checkVersions() {
 
 <style lang="scss" scoped>
 .mode-switch {
-  display: flex;
-  gap: 20px;
-  border-radius: 7px;
-  font-size: 14px;
-  padding: 3px 14px;
-  height: 30px;
-  align-items: center;
-  background-color: #eee;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 10px;
+  background: #f3f5f7;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  gap: 4px;
 }
 
+/* 单个按钮 */
 .mode-item {
-  cursor: pointer;
-  user-select: none;
+  position: relative;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 500;
-  padding: 5px;
-  border-radius: 4px;
   color: #666;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* hover */
+.mode-item:hover {
+  color: #409eff;
+}
+
+/* 激活状态 */
 .mode-item.active {
-  background-color: #fff;
+  color: #409eff;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15),
+    0 0 0 1px rgba(64, 158, 255, 0.1);
+}
+
+/* 点击反馈 */
+.mode-item:active {
+  transform: scale(0.96);
 }
 </style>

@@ -1,10 +1,9 @@
 <template>
   <el-dialog
-    :model-value="visible"
+    v-model="visible"
     width="85%"
     top="3vh"
     title="工作流预览"
-    :before-close="handleClose"
     destroy-on-close
   >
     <div class="preview-container">
@@ -58,11 +57,10 @@
   </el-dialog>
 </template>
 <script setup>
-import { ref, watch, nextTick, onMounted, markRaw } from "vue";
+import { ref, watch, nextTick, onMounted, markRaw, computed } from "vue";
 import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
 import { MiniMap } from "@vue-flow/minimap";
-import dagre from "dagre";
 
 import CommonNode from "../nodes/commonNode.vue";
 import StartNode from "../nodes/startNode.vue";
@@ -71,6 +69,7 @@ import BooleanNode from "../nodes/booleanNode.vue";
 import ForNode from "../nodes/forNode.vue";
 import WhenNode from "../nodes/whenNode.vue";
 import DefaultEdge from "../components/defaultEdge.vue";
+import { layoutNodes } from "../tools/commonTools.js";
 
 const props = defineProps({
   preViewData: Object,
@@ -81,7 +80,12 @@ const emit = defineEmits(["update:visible"]);
 
 const nodes = ref([]);
 const edges = ref([]);
-
+const visible = computed({
+  get: () => props.visible,
+  set: (val) => {
+    emit("update:visible", val);
+  },
+});
 // 节点类型
 const nodeTypes = {
   common: CommonNode,
@@ -95,13 +99,26 @@ const nodeTypes = {
 const edgeTypes = {
   default: markRaw(DefaultEdge),
 };
-
+watch(
+  () => props.visible,
+  (val) => {
+    if (val) {
+      nextTick(() => {
+        const res = layoutNodes(nodes.value, edges.value, {
+          direction: "LR",
+          // compact: true,
+        });
+        nodes.value = res.nodes;
+      });
+    }
+  },
+);
 // 监听数据
 watch(
   () => props.preViewData,
   (val) => {
     if (!val) return;
-
+    console.log("预览数据:", val);
     nodes.value = stripNodeStatus(JSON.parse(val.nodesJson || "[]"));
     edges.value = stripEdgeStatus(JSON.parse(val.edgesJson || "[]"));
 
@@ -128,39 +145,10 @@ function stripNodeStatus(nodes) {
   });
 }
 
-// 自动布局
-function layoutNodes(direction = "LR") {
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: direction, marginx: 50, marginy: 50 });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  nodes.value.forEach((node) => {
-    g.setNode(node.id, { width: 180, height: 60 });
-  });
-
-  edges.value.forEach((edge) => {
-    g.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(g);
-
-  nodes.value = nodes.value.map((node) => {
-    const { x, y } = g.node(node.id);
-    return {
-      ...node,
-      position: { x: x - 90, y: y - 30 },
-    };
-  });
-}
-
 // 关闭
 function handleClose() {
   emit("update:visible", false);
 }
-
-onMounted(() => {
-  nextTick(() => layoutNodes());
-});
 </script>
 <style scoped>
 .preview-container {
