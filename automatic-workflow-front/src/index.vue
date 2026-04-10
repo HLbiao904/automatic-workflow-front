@@ -58,6 +58,7 @@ import { useCommandStore } from "./stores/command.js";
 import DropdownMenu from "./components/DropdownMenu.vue";
 import AiFlowPanel from "./components/AiFlowPanel.vue";
 import { compileMergeFlow } from "./tools/flowMergeCompiler.js";
+import createWorkflowDialog from "./components/createWorkflowDialog.vue";
 
 const {
   project,
@@ -110,6 +111,10 @@ const templateShowPageRef = ref(null);
 const AIchatRef = ref(null);
 const overwriteViewRef = ref(null);
 const showAiFlowPanel = ref(false);
+const showCreateWorkflowDialog = ref(false);
+// 临时预览（AI生成但未应用）
+const tempNodes = ref([]);
+const tempEdges = ref([]);
 
 const nodeTypes = {
   common: markRaw(CommonNode),
@@ -1450,22 +1455,49 @@ function createTemplate(templateForm) {
   isCreateTemplate.value = true;
   createTemplateData.value = templateForm;
 }
-async function handleAIGenerateFlow(aiFlowData) {
+async function ApplyAIGenerateFlow() {
+  // ❗1. 防御判断
+  if (!tempNodes.value.length) {
+    ElMessage.warning("请先生成流程");
+    return;
+  }
   const action = await confirmReplaceOrNew();
 
   if (action === "replace") {
-    // 替换：保留开始节点，清空其他节点和所有连线
     nodes.value = nodes.value.filter((n) => n.type.toLowerCase() === "start");
     edges.value = [];
   } else if (action === "new") {
-    // 新建工作流：清空所有节点和连线
-    nodes.value = [];
+    const workflowInfo = await openCreateDialog();
+    console.log("新建工作流完成:", workflowInfo);
+
+    nodes.value = nodes.value.filter((n) => n.type.toLowerCase() === "start");
     edges.value = [];
   }
+  // ❗2. 一次性加入（推荐）
+  nodes.value.push(...tempNodes.value);
+  edges.value.push(...tempEdges.value);
+  // ❗3. 清空临时数据（防止重复应用）
+  tempNodes.value = [];
+  tempEdges.value = [];
+  // 自动布局
+  autoLayout("LR");
 
+  const elExpression = compileMergeFlow(nodes.value, edges.value);
+
+  console.log("生成的EL表达式:", elExpression);
+
+  isDirty.value = true;
+}
+
+async function handleAIGenerateFlow(aiFlowData, prompt) {
+  console.log("AI原始数据:", aiFlowData.nodes, aiFlowData.edges);
   const { nodes: aiNodes, edges: aiEdges } = aiFlowData;
+
   autoIndex = 0;
+
   const nodeTemplateResult = [];
+
+  // 1️⃣ 匹配模板
   aiNodes.forEach((node) => {
     const nodeTemplate = nodeTemplates.value.find(
       (n) =>
@@ -1481,32 +1513,38 @@ async function handleAIGenerateFlow(aiFlowData) {
     }
   });
 
-  // 添加节点
-  nodeTemplateResult.forEach((nodeTemplate) => {
-    autoAddNode(nodeTemplate, aiEdges);
-  });
+  // 2️⃣ 构建临时节点
+  const tempNodeList = nodeTemplateResult.map((nodeTemplate) =>
+    buildNode(nodeTemplate, aiEdges),
+  );
 
-  // 添加连线
-  aiEdges.forEach((edge, index) => {
-    const sourceNode = nodes.value.find((n) => n.id === edge.source);
+  // 3️⃣ 构建临时连线（❗用 tempNodeList）
+  const tempEdgeList = aiEdges.map((edge, index) => {
+    const sourceNode = tempNodeList.find((n) => n.id === edge.source);
 
-    edges.value.push({
+    return {
       id: `e-${edge.source}-${edge.target}-${index}`,
       source: edge.source,
       target: edge.target,
-
       sourceHandle: resolveSourceHandle(sourceNode, edge),
       targetHandle: "in",
-
       type: "default",
-    });
+    };
   });
-  // 自动布局
-  autoLayout("LR");
-  console.log("AI生成的节点和连线:", nodes.value, edges.value);
-  const elExpression = compileMergeFlow(nodes.value, edges.value);
-  console.log("生成的EL表达式:", elExpression);
-  isDirty.value = true;
+
+  // 4️⃣ 一次性赋值（❗不要 push）
+  tempNodes.value = tempNodeList;
+  tempEdges.value = tempEdgeList;
+
+  console.log("AI生成的临时节点和连线:", tempNodes.value, tempEdges.value);
+
+  // 5️⃣ 保存历史
+  await service.post("/ai/workflow/history/save", {
+    userId: localStorage.getItem("userId"),
+    prompt,
+    nodesJson: JSON.stringify(tempNodes.value),
+    edgesJson: JSON.stringify(tempEdges.value),
+  });
 }
 function hasOtherNodes() {
   return nodes.value.some((node) => node.type.toLowerCase() !== "start");
@@ -1536,7 +1574,7 @@ async function confirmReplaceOrNew() {
 
 let autoIndex = 0; // 全局计数器
 
-function autoAddNode(template, aiEdges) {
+function buildNode(template, aiEdges) {
   const colCount = 4;
   const gapX = 180;
   const gapY = 120;
@@ -1555,7 +1593,7 @@ function autoAddNode(template, aiEdges) {
 
   let branches = [];
 
-  // 核心：如果是 switch，从 edges 推导 branches
+  // switch 分支处理
   if (template.type.toLowerCase() === "switch") {
     const relatedEdges = aiEdges.filter((e) => e.source === template.id);
 
@@ -1563,13 +1601,13 @@ function autoAddNode(template, aiEdges) {
       id: e.label || `case-${index}`,
     }));
 
-    // 确保有 default
     if (!branches.some((b) => b.id === "default")) {
       branches.push({ id: "default" });
     }
   }
 
-  nodes.value.push({
+  // 返回 node（不 push）
+  return {
     id: template.id,
     type: template.type.toLowerCase(),
     label: template.label,
@@ -1589,13 +1627,33 @@ function autoAddNode(template, aiEdges) {
       description: template.description,
       icon: template.icon,
       localIcon: template.localIcon,
-
-      // 关键
       branches,
     },
-  });
-
+  };
+}
+function addNodeToCanvas(node) {
+  nodes.value.push(node);
   isDirty.value = true;
+}
+let resolveCreate = null;
+
+function openCreateDialog() {
+  showCreateWorkflowDialog.value = true;
+
+  return new Promise((resolve) => {
+    resolveCreate = resolve;
+  });
+}
+function handleCreateSuccess(data) {
+  showCreateWorkflowDialog.value = false;
+  viewMode.value = "editor";
+  workflowName.value = data.name;
+  currentWorkflowId.value = data.id;
+  ElMessage.success("工作流创建成功");
+  if (resolveCreate) {
+    resolveCreate(data); // 通知继续执行
+    resolveCreate = null;
+  }
 }
 function resolveSourceHandle(node, edge) {
   if (!node) return "out";
@@ -1709,7 +1767,7 @@ function resolveSourceHandle(node, edge) {
       :with-header="false"
       :modal="false"
       :modal-penetrable="true"
-      :class="['nodes-drawer', { flash: drawerFlash }]"
+      class="ai-drawer"
     >
       <div class="drawer-header">
         <span>AI 助手</span>
@@ -1717,7 +1775,10 @@ function resolveSourceHandle(node, edge) {
           ><el-icon><Close /></el-icon
         ></el-button>
       </div>
-      <AiFlowPanel @generate-flow="handleAIGenerateFlow" />
+      <AiFlowPanel
+        @generate-success="handleAIGenerateFlow"
+        @apply-flow="ApplyAIGenerateFlow"
+      />
     </el-drawer>
 
     <div class="center-panel" ref="flowWrapper">
@@ -1898,6 +1959,10 @@ function resolveSourceHandle(node, edge) {
         @select="handleDropdownMenuSelect"
       />
     </div>
+    <CreateWorkflowDialog
+      v-model="showCreateWorkflowDialog"
+      @goEditor="handleCreateSuccess"
+    />
   </div>
 </template>
 

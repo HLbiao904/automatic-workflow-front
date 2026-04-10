@@ -152,7 +152,6 @@
 import { ElMessage } from "element-plus";
 import { ref, onMounted, computed } from "vue";
 import service from "../service/index.js";
-
 const emit = defineEmits(["goEditor"]);
 
 const createFormRef = ref(null);
