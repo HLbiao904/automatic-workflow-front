@@ -3,7 +3,7 @@
     v-model="visible"
     width="85%"
     top="3vh"
-    title="工作流预览"
+    title="AI生成工作流预览"
     destroy-on-close
   >
     <div class="preview-container">

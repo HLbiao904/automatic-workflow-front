@@ -192,7 +192,7 @@ async function generateFlow() {
     // 通知父组件
     emit("generate-success", validatedFlowData, prompt.value);
 
-    ElMessage.success("生成成功");
+    // ElMessage.success("生成成功");
   } catch (err) {
     ElMessage.error("生成异常");
   } finally {

@@ -1549,6 +1549,13 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
 
   console.log("AI生成的临时节点和连线:", tempNodes.value, tempEdges.value);
 
+  ElMessage.success("AI生成流程成功");
+  // AI生成流程成功后,自动预览流程
+  preViewAIFlowData.value = {
+    nodesJson: JSON.stringify(tempNodes.value),
+    edgesJson: JSON.stringify(tempEdges.value),
+  };
+  showAIFlowPreview.value = true;
   // 5️⃣ 保存历史
   await service.post("/ai/workflow/history/save", {
     userId: localStorage.getItem("userId"),
