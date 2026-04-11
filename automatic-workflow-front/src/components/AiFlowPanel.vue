@@ -93,11 +93,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { ElMessage } from "element-plus";
 import service from "../service/index.js";
 import validateAndFixFlow from "../tools/AIAutomaticFlowTools.js";
-
+const props = defineProps({ refreshKey: [String, Number] });
 const emit = defineEmits(["generate-success", "apply-flow", "preview-flow"]);
 
 const prompt = ref("");
@@ -111,6 +111,12 @@ onMounted(async () => {
   historyList.value = res.data || [];
   console.log("历史记录:", res);
 });
+watch(
+  () => props.refreshKey,
+  () => {
+    fetchHistory(); // 重新请求
+  },
+);
 // ================= 模板 =================
 const templateKeyword = ref("");
 
@@ -151,6 +157,18 @@ function fillExample(text) {
   prompt.value = text;
 }
 
+function fetchHistory() {
+  service
+    .get("/ai/workflow/history/list", {
+      params: {
+        userId: Number(localStorage.getItem("userId")),
+      },
+    })
+    .then((res) => {
+      historyList.value = res.data || [];
+      console.log("历史记录:", res);
+    });
+}
 // ================= 历史记录 =================
 const historyList = ref([]);
 
@@ -170,7 +188,7 @@ async function generateFlow() {
     });
 
     const aiFlowData = parseAIStreamData(response.data);
-
+    console.log("AI原始返回数据:", aiFlowData);
     if (!aiFlowData) {
       ElMessage.error("AI生成失败");
       return;
@@ -185,8 +203,9 @@ async function generateFlow() {
     historyList.value.unshift({
       id: Date.now(),
       prompt: prompt.value,
-      flow: validatedFlowData,
-      time: new Date().toLocaleString(),
+      nodesJson: JSON.stringify(validatedFlowData.nodes),
+      edgesJson: JSON.stringify(validatedFlowData.edges),
+      createdAt: new Date().toLocaleString(),
     });
 
     // 通知父组件

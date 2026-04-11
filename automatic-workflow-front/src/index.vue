@@ -118,6 +118,7 @@ const tempNodes = ref([]);
 const tempEdges = ref([]);
 const showAIFlowPreview = ref(false);
 const preViewAIFlowData = ref({});
+const refreshAIHistoryKey = ref(0); // 用于刷新AI生成历史记录
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
@@ -1537,9 +1538,9 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
       id: `e-${edge.source}-${edge.target}-${index}`,
       source: edge.source,
       target: edge.target,
-      sourceHandle: resolveSourceHandle(sourceNode, edge),
+      sourceHandle: resolveSourceHandle(sourceNode, edge, index),
       targetHandle: "in",
-      type: "default",
+      // type: "default",
     };
   });
 
@@ -1563,6 +1564,8 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
     nodesJson: JSON.stringify(tempNodes.value),
     edgesJson: JSON.stringify(tempEdges.value),
   });
+  // 刷新历史列表（通过 key 重新渲染组件）
+  refreshAIHistoryKey.value++;
 }
 function hasOtherNodes() {
   return nodes.value.some((node) => node.type.toLowerCase() !== "start");
@@ -1673,7 +1676,7 @@ function handleCreateSuccess(data) {
     resolveCreate = null;
   }
 }
-function resolveSourceHandle(node, edge) {
+function resolveSourceHandle(node, edge, index) {
   if (!node) return "out";
 
   switch (node.type) {
@@ -1681,7 +1684,7 @@ function resolveSourceHandle(node, edge) {
       return edge.label === "true" ? "true" : "false";
 
     case "switch":
-      return edge.label || "default";
+      return edge.label || `case-${index}`;
 
     case "when":
       return "parallel";
@@ -1797,6 +1800,7 @@ function resolveSourceHandle(node, edge) {
         @generate-success="handleAIGenerateFlow"
         @apply-flow="ApplyAIGenerateFlow"
         @preview-flow="previewAiFlow"
+        :refreshKey="refreshAIHistoryKey"
       />
     </el-drawer>
 

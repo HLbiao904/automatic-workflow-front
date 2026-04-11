@@ -119,14 +119,34 @@ watch(
   (val) => {
     if (!val) return;
     console.log("预览数据:", val);
-    nodes.value = stripNodeStatus(JSON.parse(val.nodesJson || "[]"));
-    edges.value = stripEdgeStatus(JSON.parse(val.edgesJson || "[]"));
+    nodes.value = stripNodeStatus(parseMaybeJson(val.nodesJson || val.nodes));
+    edges.value = stripEdgeStatus(parseMaybeJson(val.edgesJson || val.edges));
 
     nextTick(() => layoutNodes());
   },
   { deep: true, immediate: true },
 );
 
+function parseMaybeJson(data) {
+  if (!data) return [];
+
+  // 已经是对象
+  if (typeof data === "object") {
+    return data;
+  }
+
+  // 是字符串才解析
+  if (typeof data === "string") {
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      console.warn("JSON解析失败:", data);
+      return [];
+    }
+  }
+
+  return [];
+}
 // 去除状态字段
 function stripEdgeStatus(edges) {
   return edges.map((e) => {
