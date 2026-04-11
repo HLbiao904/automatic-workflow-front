@@ -720,7 +720,7 @@ async function generateEL() {
     // 每次执行工作流重置nodes和edges状态
     nodes.value = stripNodeStatus(nodes.value);
     edges.value = stripEdgeStatus(edges.value);
-    const el = compileFlow(activeNodes, edges.value);
+    const el = compileMergeFlow(activeNodes, edges.value);
     console.log("生成 EL:", el);
     const chainId = Date.now().toString();
 
