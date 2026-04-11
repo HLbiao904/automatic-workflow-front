@@ -7,7 +7,7 @@ function addNode() {
   emit("add-node");
 }
 const isConnected = computed(() =>
-  edges.value.some((e) => e.source === props.id && e.sourceHandle === "out"),
+  edges.value.some((e) => e.source === props.id),
 );
 const props = defineProps({
   id: {

@@ -199,15 +199,6 @@ async function generateFlow() {
       aiFlowData.edges,
     );
 
-    // 存历史
-    historyList.value.unshift({
-      id: Date.now(),
-      prompt: prompt.value,
-      nodesJson: JSON.stringify(validatedFlowData.nodes),
-      edgesJson: JSON.stringify(validatedFlowData.edges),
-      createdAt: new Date().toLocaleString(),
-    });
-
     // 通知父组件
     emit("generate-success", validatedFlowData, prompt.value);
 

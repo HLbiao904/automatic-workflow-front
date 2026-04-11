@@ -60,6 +60,7 @@ import AiFlowPanel from "./components/AiFlowPanel.vue";
 import { compileMergeFlow } from "./tools/flowMergeCompiler.js";
 import createWorkflowDialog from "./components/createWorkflowDialog.vue";
 import AIFlowPreview from "./components/AIFlowPreview.vue";
+import { connectStartToEntries } from "./tools/commonTools.js";
 
 const {
   project,
@@ -1493,10 +1494,11 @@ async function ApplyAIGenerateFlow() {
   isDirty.value = true;
 }
 function previewAiFlow(previewData) {
-  const { nodesJson, edgesJson } = previewData;
+  const { nodesJson, edgesJson, prompt } = previewData;
   preViewAIFlowData.value = {
     nodesJson: nodesJson,
     edgesJson: edgesJson,
+    prompt: prompt,
   };
   showAIFlowPreview.value = true;
   console.log(JSON.parse(nodesJson), JSON.parse(edgesJson));
@@ -1567,6 +1569,46 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
   // 刷新历史列表（通过 key 重新渲染组件）
   refreshAIHistoryKey.value++;
 }
+async function applyAIFlowFromPreview({ aiNodes, aiEdges }) {
+  // ❗1. 防御
+  if (!aiNodes?.length) {
+    ElMessage.warning("没有可应用的流程");
+    return;
+  }
+
+  const action = await confirmReplaceOrNew();
+
+  // ❗2. 处理 replace / new
+  if (action === "replace") {
+    nodes.value = nodes.value.filter((n) => n.type?.toLowerCase() === "start");
+    edges.value = [];
+  } else if (action === "new") {
+    const workflowInfo = await openCreateDialog();
+    console.log("新建工作流完成:", workflowInfo);
+
+    nodes.value = nodes.value.filter((n) => n.type?.toLowerCase() === "start");
+    edges.value = [];
+  } else {
+    return;
+  }
+
+  // ❗3. 合并 AI 流程
+  nodes.value.push(...aiNodes);
+  edges.value.push(...aiEdges);
+
+  // ❗4. 自动连接 start → AI入口节点（核心）
+  connectStartToEntries(aiNodes, edges.value, nodes.value);
+
+  // ❗5. 自动布局
+  autoLayout("LR");
+
+  // ❗6. 生成表达式
+  const elExpression = compileMergeFlow(nodes.value, edges.value);
+  console.log("生成的EL表达式:", elExpression);
+
+  isDirty.value = true;
+}
+
 function hasOtherNodes() {
   return nodes.value.some((node) => node.type.toLowerCase() !== "start");
 }
@@ -1989,6 +2031,7 @@ function resolveSourceHandle(node, edge, index) {
     <AIFlowPreview
       v-model:visible="showAIFlowPreview"
       :preViewData="preViewAIFlowData"
+      @apply-flow="applyAIFlowFromPreview"
     />
   </div>
 </template>

@@ -1,29 +1,44 @@
 <template>
   <el-dialog
     v-model="visible"
-    width="85%"
-    top="3vh"
+    width="90%"
+    top="2vh"
     title="AI生成工作流预览"
+    class="ai-flow-dialog"
     destroy-on-close
   >
-    <div class="preview-container">
-      <!-- 工作流画布 -->
-      <div class="workflow-preview">
+    <div class="preview-wrapper">
+      <div class="top-panel">
+        <div class="info-card prompt">
+          <span class="label">💡 需求</span>
+          <span class="value">
+            {{ props.preViewData?.prompt || "暂无内容" }}
+          </span>
+        </div>
+
+        <div class="info-card">
+          <div class="label">节点</div>
+          <div class="value number">{{ nodes.length }}</div>
+        </div>
+
+        <div class="info-card">
+          <div class="label">连线</div>
+          <div class="value number">{{ edges.length }}</div>
+        </div>
+        <el-button type="primary" size="default" @click="applyToCanvas"
+          >应用到画布</el-button
+        >
+      </div>
+
+      <!-- 画布区域 -->
+      <div class="canvas-card">
         <VueFlow
-          id="preview-flow"
-          ref="vueFlow"
           v-model:nodes="nodes"
           v-model:edges="edges"
           class="flow-preview"
-          :node-types="nodeTypes"
-          :edge-types="edgeTypes"
           :fit-view="true"
           :nodes-draggable="false"
           :nodes-connectable="false"
-          :elements-selectable="false"
-          :zoom-on-scroll="false"
-          :pan-on-scroll="true"
-          :pan-on-drag="true"
         >
           <template #node-common="nodeProps">
             <CommonNode v-bind="nodeProps" :previewMode="true" />
@@ -49,7 +64,7 @@
             <WhenNode v-bind="nodeProps" :previewMode="true" />
           </template>
 
-          <MiniMap pannable zoomable />
+          <MiniMap />
           <Background pattern-color="#ccc" :gap="16" variant="dots" />
         </VueFlow>
       </div>
@@ -76,7 +91,7 @@ const props = defineProps({
   visible: Boolean,
 });
 
-const emit = defineEmits(["update:visible"]);
+const emit = defineEmits(["update:visible", "apply-flow"]);
 
 const nodes = ref([]);
 const edges = ref([]);
@@ -118,15 +133,33 @@ watch(
   () => props.preViewData,
   (val) => {
     if (!val) return;
-    console.log("预览数据:", val);
-    nodes.value = stripNodeStatus(parseMaybeJson(val.nodesJson || val.nodes));
-    edges.value = stripEdgeStatus(parseMaybeJson(val.edgesJson || val.edges));
 
-    nextTick(() => layoutNodes());
+    const rawNodes = parseMaybeJson(val.nodesJson || val.nodes);
+    const rawEdges = parseMaybeJson(val.edgesJson || val.edges);
+
+    // 彻底断引用
+    nodes.value = stripNodeStatus(JSON.parse(JSON.stringify(rawNodes)));
+    edges.value = stripEdgeStatus(JSON.parse(JSON.stringify(rawEdges)));
+
+    nextTick(() => {
+      const res = layoutNodes(
+        JSON.parse(JSON.stringify(nodes.value)),
+        JSON.parse(JSON.stringify(edges.value)),
+        { direction: "LR" },
+      );
+
+      nodes.value = res.nodes;
+    });
   },
   { deep: true, immediate: true },
 );
-
+function applyToCanvas() {
+  emit("apply-flow", {
+    aiNodes: nodes.value,
+    aiEdges: edges.value,
+  });
+  handleClose();
+}
 function parseMaybeJson(data) {
   if (!data) return [];
 
@@ -171,17 +204,82 @@ function handleClose() {
 }
 </script>
 <style scoped>
-.preview-container {
+.ai-flow-dialog :deep(.el-dialog__body) {
+  padding: 12px;
+  background: #f6f7fb;
+}
+
+.preview-wrapper {
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
 /* 画布 */
-.workflow-preview {
-  width: 100%;
+.canvas-card {
   height: 680px;
-  border-radius: 6px;
-  border: 1px solid #e5e6eb;
-  background: #fafafa;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.top-panel {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* 通用卡片 */
+.info-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 6px 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+
+  display: flex;
+  align-items: center;
+  /* flex-direction: column; */
+  justify-content: start;
+
+  min-height: 30px;
+}
+
+/* prompt 占大部分宽度 */
+.info-card.prompt {
+  flex: 1;
+}
+
+/* 统计卡片固定宽度 */
+.info-card:not(.prompt) {
+  width: 120px;
+  text-align: center;
+}
+
+/* 标题 */
+.label {
+  font-size: 14px;
+  color: #888;
+  margin-right: 6px;
+}
+
+/* 内容 */
+.value {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+
+  font-weight: 500;
+  letter-spacing: 0.2px;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 数字强调 */
+.value.number {
+  font-size: 18px;
+  font-weight: 600;
+  color: #409eff;
 }
 </style>

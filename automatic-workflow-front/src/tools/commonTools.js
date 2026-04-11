@@ -99,3 +99,31 @@ export function layoutNodes(
     edges,
   };
 }
+
+// 流程连接函数：将“开始”节点连接到所有没有入边的 AI 流程节点
+export function connectStartToEntries(aiNodes, allEdges, allNodes) {
+  const startNode = allNodes.find((n) => n.type?.toLowerCase() === "start");
+
+  if (!startNode) return;
+
+  // 所有 target（已有入边的节点）
+  const targetSet = new Set(allEdges.map((e) => e.target));
+
+  // 找 AI 流程中的“入口节点”（没有入边）
+  const entryNodes = aiNodes.filter((n) => !targetSet.has(n.id));
+
+  entryNodes.forEach((node, index) => {
+    // ❗防止重复连接（关键）
+    const exists = allEdges.some(
+      (e) => e.source === startNode.id && e.target === node.id,
+    );
+
+    if (!exists) {
+      allEdges.push({
+        id: `start-${node.id}-${Date.now()}-${index}`,
+        source: startNode.id,
+        target: node.id,
+      });
+    }
+  });
+}
