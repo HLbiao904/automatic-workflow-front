@@ -68,7 +68,7 @@ import {
   watch,
 } from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
-import MorePanel from "../components/MorePanel.vue";
+import MorePanel from "../components/morePanel.vue";
 const { removeNodes, updateNode } = useVueFlow();
 // const cases = [{ id: "case-1" }, { id: "case-2" }, { id: "default" }];
 const cases = computed(() => {

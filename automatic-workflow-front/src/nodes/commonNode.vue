@@ -81,7 +81,7 @@ import {
 } from "vue";
 import { Position, Handle, useVueFlow } from "@vue-flow/core";
 import { NodeToolbar } from "@vue-flow/node-toolbar";
-import MorePanel from "../components/MorePanel.vue";
+import MorePanel from "../components/morePanel.vue";
 const { removeNodes, edges, updateNode } = useVueFlow();
 const hover = ref(false);
 const outputId = "out";

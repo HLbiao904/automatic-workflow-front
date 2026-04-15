@@ -44,7 +44,7 @@ import ModeSwitch from "./components/modeSwitch.vue";
 import ExecutionsPanel from "./views/executionsView.vue";
 import OverwriteView from "./views/overwriteView.vue";
 import PersonView from "./views/personView.vue";
-import ChatView from "./views/chatView.vue";
+import Chat from "./views/chatView.vue";
 import VersionPanel from "./views/versionView.vue";
 import GlobalSearchDialog from "./components/dialog/globalSearchDialog.vue";
 import Dashboard from "./views/dashboardView.vue";
@@ -1881,7 +1881,7 @@ function resolveSourceHandle(node, edge, index) {
           @use-template="useTemplate"
           @create-template="createTemplate"
         />
-        <ChatView v-if="viewMode == 'chat'" ref="AIchatRef" />
+        <AiChat v-if="viewMode == 'chat'" ref="AIchatRef" />
         <VueFlow
           id="editor-flow"
           v-show="viewMode === 'editor'"

@@ -190,6 +190,7 @@ async function send() {
         message: question,
       }),
     });
+    // service.post("/chat");
 
     if (!response.body) {
       throw new Error("浏览器不支持流式响应");

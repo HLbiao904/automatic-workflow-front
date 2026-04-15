@@ -30,7 +30,7 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { ElMessage } from "element-plus";
-import service from "../service/index.js";
+import service from "../../service/index.js";
 
 // 接收父组件 v-model
 const props = defineProps({

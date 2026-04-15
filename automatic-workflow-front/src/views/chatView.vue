@@ -2,7 +2,7 @@
   <div class="chat-layout">
     <!-- 左侧聊天区 -->
     <main class="chat-main">
-      <ChatView
+      <ChatViewPanel
         :sessionId="currentSessionId"
         @session-created="onSessionCreated"
         @title-updated="onTitleUpdated"
@@ -79,9 +79,9 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
-import ChatView from "./ChatView.vue";
+import ChatViewPanel from "../components/chatViewPanel.vue";
 import service from "../service/index.js";
-import SearchChatDialog from "../components/SearchChatDialog.vue";
+import SearchChatDialog from "../components/dialog/SearchChatDialog.vue";
 
 let userId = null;
 const collapsed = ref(false);

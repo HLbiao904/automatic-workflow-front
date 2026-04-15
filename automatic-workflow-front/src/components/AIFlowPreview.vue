@@ -83,7 +83,7 @@ import SwitchNode from "../nodes/switchNode.vue";
 import BooleanNode from "../nodes/booleanNode.vue";
 import ForNode from "../nodes/forNode.vue";
 import WhenNode from "../nodes/whenNode.vue";
-import DefaultEdge from "../components/defaultEdge.vue";
+import DefaultEdge from "../edges/defaultEdge.vue";
 import { layoutNodes } from "../tools/commonTools.js";
 
 const props = defineProps({

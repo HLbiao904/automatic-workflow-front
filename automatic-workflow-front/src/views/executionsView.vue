@@ -14,7 +14,7 @@ import SwitchNode from "../nodes/switchNode.vue";
 import ForNode from "../nodes/forNode.vue";
 import BooleanNode from "../nodes/booleanNode.vue";
 import WhenNode from "../nodes/whenNode.vue";
-import DefaultEdge from "../components/defaultEdge.vue";
+import DefaultEdge from "../edges/defaultEdge.vue";
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),

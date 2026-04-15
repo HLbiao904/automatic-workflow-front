@@ -72,14 +72,13 @@ onMounted(loadUser);
 async function loadUser() {
   userId.value = Number(localStorage.getItem("userId"));
   const res = await service.get(`/user/queryUserById/${userId.value}`);
-
-  user.value = res.data;
+  user.value = res.data.data;
 }
 
 /* 保存用户 */
 
 async function saveUser() {
-  await service.post("/user/update", user.value);
+  await service.put("/user/update", user.value);
 
   ElMessage.success("保存成功");
 }

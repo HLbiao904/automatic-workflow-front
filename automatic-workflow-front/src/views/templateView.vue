@@ -161,7 +161,7 @@
 import { ElMessage } from "element-plus";
 import { ref, computed, onMounted } from "vue";
 import service from "../service/index.js";
-import TemplatePreview from "./TemplatePreview.vue";
+import TemplatePreview from "../components/TemplatePreview.vue";
 
 const keyword = ref("");
 const activeCategory = ref("0"); // 默认选中“全部”
@@ -270,8 +270,8 @@ async function getTemplateInfo(nodesJson, templateId, userId) {
   // 获取用户信息
   const user = await service.get(`/user/queryUserById/${userId}`);
 
-  templateNodes.userAvatar = user.data.avatar;
-  templateNodes.userName = user.data.username;
+  templateNodes.userAvatar = user.data.data.avatar;
+  templateNodes.userName = user.data.data.username;
 
   return templateNodes;
 }
@@ -344,13 +344,14 @@ function preview(row) {
   console.log("预览模板", row);
   // 获取模版创建者
   service.get(`/user/queryUserById/${row.userId}`).then((res) => {
+    const userData = res.data.data;
     if (res.status === 200) {
       showPreview.value = true;
       preViewData.value = {
         ...row,
       };
-      preViewData.value.username = res.data.username;
-      preViewData.value.avatar = res.data.avatar;
+      preViewData.value.username = userData.username;
+      preViewData.value.avatar = userData.avatar;
     }
   });
 }

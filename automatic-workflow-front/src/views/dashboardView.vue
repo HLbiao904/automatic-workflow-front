@@ -91,9 +91,7 @@ const recent = ref([]);
 
 onMounted(async () => {
   const res = await service.get("/api/dashboard/workflow");
-
   const data = res.data;
-
   overview.value = data.overview;
   recent.value = data.recent;
 

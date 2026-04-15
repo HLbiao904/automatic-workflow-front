@@ -453,7 +453,7 @@ import VueJsonPretty from "vue-json-pretty";
 import "vue-json-pretty/lib/styles.css";
 import { useVueFlow } from "@vue-flow/core";
 import { ElMessage } from "element-plus";
-import FilePicker from "../components/FilePicker.vue";
+import FilePicker from "../filePicker.vue";
 import JsonEditorVue from "json-editor-vue";
 import "vanilla-jsoneditor/themes/jse-theme-dark.css";
 import MarkdownIt from "markdown-it";

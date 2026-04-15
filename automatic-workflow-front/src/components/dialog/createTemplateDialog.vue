@@ -79,7 +79,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import service from "../service/index.js";
+import service from "../../service/index.js";
 
 // 新增分类弹窗
 const categoryDialog = ref(false);

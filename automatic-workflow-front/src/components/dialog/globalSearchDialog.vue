@@ -86,11 +86,11 @@ import {
   nextTick,
 } from "vue";
 import dayjs from "dayjs";
-import commonIcon from "../assets/code-solid-full.svg";
-import switchIcon from "../assets/flagSwitch.svg";
-import forIcon from "../assets/ForNode.svg";
-import whenIcon from "../assets/parallel.svg";
-import booleanIcon from "../assets/flagBoolean.svg";
+import commonIcon from "../../assets/code-solid-full.svg";
+import switchIcon from "../../assets/flagSwitch.svg";
+import forIcon from "../../assets/ForNode.svg";
+import whenIcon from "../../assets/parallel.svg";
+import booleanIcon from "../../assets/flagBoolean.svg";
 /* props */
 const props = defineProps({
   modelValue: Boolean,
