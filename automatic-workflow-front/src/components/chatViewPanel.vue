@@ -19,7 +19,6 @@
               <!-- 完成后：Markdown -->
               <div v-else class="markdown-body" v-html="msg.html"></div>
             </div>
-
             <!-- 用户：纯文本 -->
             <div v-else>
               {{ msg.content }}
@@ -55,7 +54,6 @@ import { ref, watch, nextTick, computed } from "vue";
 import { marked } from "marked";
 import "github-markdown-css/github-markdown-light.css";
 import service from "../service/index.js";
-
 /* ---------------- props / emit ---------------- */
 
 const props = defineProps({
@@ -68,7 +66,6 @@ const props = defineProps({
     default: false,
   },
 });
-
 const emit = defineEmits([
   "session-created",
   "title-updated",
@@ -76,7 +73,6 @@ const emit = defineEmits([
 ]);
 
 /* ---------------- markdown config ---------------- */
-
 marked.setOptions({
   gfm: true,
   breaks: true,
@@ -89,7 +85,6 @@ const input = ref("");
 const loading = ref(false);
 const msgBox = ref(null);
 const localSessionId = ref(props.sessionId);
-
 /* ---------------- watch session change ---------------- */
 
 watch(
@@ -234,7 +229,6 @@ async function send() {
         break;
       }
     }
-
     // 6️⃣ 新会话生成标题
     if (props.isNewSession) {
       generateTitle(question);
@@ -347,7 +341,7 @@ function scrollBottom() {
   min-width: 400px;
 
   display: flex;
-  align-items: center; /* ⭐ 垂直居中关键 */
+  align-items: center;
   gap: 12px;
 
   padding: 8px 16px;

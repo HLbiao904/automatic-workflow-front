@@ -196,6 +196,10 @@ async function loadSessions() {
     },
   });
   sessions.value = res.data || [];
+  // 修复sessions为空时,不会自动生成对话记录问题
+  if (sessions.value.length == 0) {
+    isNewSession.value = true;
+  }
   console.log("sessions", res.data);
 
   // 默认选中最近一个
