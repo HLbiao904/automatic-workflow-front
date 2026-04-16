@@ -255,7 +255,6 @@ async function generateTitle(question) {
       question,
     },
   });
-
   emit("title-updated", {
     sessionId: localSessionId.value,
     title: res.data,

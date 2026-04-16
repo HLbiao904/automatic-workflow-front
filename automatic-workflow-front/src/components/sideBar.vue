@@ -57,7 +57,10 @@
         <div class="menuIcon"><img src="../assets/template.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Templates</div>
       </div>
-
+      <div class="menuItem" @click="goSystemManagement">
+        <div class="menuIcon"><img src="../assets/systemManagement.svg" /></div>
+        <div class="menuTitle" v-if="!collapsed">systemManagement</div>
+      </div>
       <el-dropdown @command="handleConfig" trigger="click">
         <div
           class="menuItem"
@@ -116,6 +119,9 @@ function goTemplates() {
 function goConfiguration() {
   activeMenu.value = "configuration";
   emit("showConfiguration");
+}
+function goSystemManagement() {
+  router.push("/systemManagement");
 }
 const props = defineProps({
   showSidebar: {
