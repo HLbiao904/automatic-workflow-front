@@ -11,13 +11,22 @@ export function addUser(data) {
 }
 
 /**
- * 获取用户列表
+ * 根据关键字获取用户列表
  */
 export function getUserList(params) {
   return request({
     url: "/user/list",
     method: "GET",
     params,
+  });
+}
+/**
+ * 获取所有用户
+ */
+export function getAllUserList() {
+  return request({
+    url: "/user/allUserList",
+    method: "GET",
   });
 }
 /**

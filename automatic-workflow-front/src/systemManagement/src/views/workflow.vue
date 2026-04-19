@@ -130,13 +130,33 @@
     </el-dialog>
 
     <el-dialog v-model="createVisible" title="新建工作流" width="400px">
-      <el-form :model="createForm" label-width="80px">
-        <el-form-item label="名称">
-          <el-input v-model="createForm.name" />
+      <el-form
+        :model="createForm"
+        label-width="80px"
+        :rules="createRules"
+        ref="createFormRef"
+      >
+        <el-form-item label="用户" prop="userId">
+          <el-select v-model="createForm.userId" placeholder="请选择用户">
+            <el-option
+              v-for="u in userList"
+              :key="u.id"
+              :label="u.username"
+              :value="u.id"
+            >
+              <div class="user-option">
+                <img :src="u.avatar" class="avatar" />
+                <span>{{ u.username }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="名称" prop="name">
+          <el-input v-model="createForm.name" maxlength="30" />
         </el-form-item>
 
-        <el-form-item label="描述">
-          <el-input v-model="createForm.description" />
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="createForm.description" maxlength="200" />
         </el-form-item>
       </el-form>
 
@@ -146,13 +166,18 @@
       </template>
     </el-dialog>
     <el-dialog v-model="editVisible" title="编辑工作流" width="400px">
-      <el-form :model="form" label-width="80px">
-        <el-form-item label="名称">
-          <el-input v-model="form.workflowName" />
+      <el-form
+        :model="form"
+        label-width="80px"
+        :rules="editRules"
+        ref="editFormRef"
+      >
+        <el-form-item label="名称" prop="workflowName">
+          <el-input v-model="form.workflowName" maxlength="40" />
         </el-form-item>
 
-        <el-form-item label="描述">
-          <el-input v-model="form.description" />
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="form.description" maxlength="200" />
         </el-form-item>
       </el-form>
 
@@ -188,8 +213,12 @@ import {
   getWorkflowExecutions,
   getVersionById,
 } from "@/systemManagement/src/api/workflow";
+import { getAllUserList } from "@/systemManagement/src/api/user";
 import { deleteExecution } from "@/systemManagement/src/api/execution";
 
+const userList = ref([]);
+const createFormRef = ref(null);
+const editFormRef = ref(null);
 /* 编辑 */
 const editVisible = ref(false);
 const createVisible = ref(false);
@@ -197,6 +226,7 @@ const createVisible = ref(false);
 const createForm = reactive({
   name: "",
   description: "",
+  userId: null,
 });
 const form = reactive({
   id: null,
@@ -219,15 +249,47 @@ const versionList = ref([]);
 /* 执行记录 */
 const execVisible = ref(false);
 const execList = ref([]);
-
+// 构建工作流校验规则
+const createRules = {
+  name: [
+    { required: true, message: "请输入工作流名称", trigger: "blur" },
+    { min: 2, max: 30, message: "长度 2-30 个字符", trigger: "blur" },
+    {
+      validator: (_, val, cb) => {
+        if (!val.trim()) cb(new Error("不能全是空格"));
+        else cb();
+      },
+      trigger: "blur",
+    },
+  ],
+  description: [
+    { required: true, message: "请输入描述", trigger: "blur" },
+    { max: 200, message: "最多 200 字", trigger: "blur" },
+  ],
+  userId: [{ required: true, message: "请选择用户", trigger: "change" }],
+};
+// 编辑工作流校验规则
+const editRules = {
+  workflowName: [
+    { required: true, message: "请输入工作流名称", trigger: "blur" },
+    { min: 2, max: 30, message: "长度 2-30 个字符", trigger: "blur" },
+  ],
+  description: [
+    { required: true, message: "请输入描述", trigger: "blur" },
+    { max: 200, message: "最多 200 字", trigger: "blur" },
+  ],
+};
 /* ================= 加载工作流列表 ================= */
 const loadData = async () => {
   const res = await getWorkflowList(query.userId);
   list.value = res || [];
 };
 
-onMounted(() => {
+onMounted(async () => {
   loadData();
+
+  const res = await getAllUserList();
+  userList.value = res || [];
 });
 
 /* ================= 操作 ================= */
@@ -236,13 +298,9 @@ const openCreate = () => {
   createVisible.value = true;
 };
 const createSubmit = async () => {
-  if (!createForm.name) {
-    ElMessage.warning("请输入工作流名称");
-    return;
-  }
-
+  await createFormRef.value.validate();
   await createWorkflow({
-    userId: query.userId,
+    userId: createForm.userId,
     name: createForm.name,
     description: createForm.description,
   });
@@ -265,6 +323,7 @@ const edit = (row) => {
 };
 
 const saveEdit = async () => {
+  await editFormRef.value.validate();
   await modifyWorkflow({
     id: form.id,
     workflowName: form.workflowName,
@@ -496,5 +555,16 @@ function formatDuration(ms) {
   justify-content: center;
   gap: 6px;
   white-space: nowrap;
+}
+.user-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
 }
 </style>

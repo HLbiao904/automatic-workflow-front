@@ -18,12 +18,10 @@ const router = createRouter({
       name: "systemManagement",
       component: () => import("@/systemManagement/src/layout/index.vue"),
     },
-
     {
       path: "/",
       redirect: "/login",
     },
-
     {
       path: "/login",
       component: () => import("@/systemManagement/src/views/login.vue"),

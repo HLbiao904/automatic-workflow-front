@@ -45,6 +45,7 @@
               v-model="row.status"
               :active-value="1"
               :inactive-value="0"
+              :disabled="row.role === 'ADMIN'"
               @change="changeStatus(row)"
             />
           </template>

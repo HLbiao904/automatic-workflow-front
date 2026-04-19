@@ -55,7 +55,8 @@
       <header class="header">
         <div class="left">
           <button class="collapse-btn" @click="toggleCollapse">☰</button>
-
+          <!-- 返回按钮 -->
+          <button class="back-btn" @click="goBack">返回工作流</button>
           <div class="breadcrumb">后台管理 / {{ currentTitle }}</div>
         </div>
 
@@ -77,22 +78,25 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { queryUserById } from "@/systemManagement/src/api/user";
 
 const route = useRoute();
+const router = useRouter();
 const loginUser = ref(null);
 
-onMounted(() => {
+onMounted(async () => {
   queryUserById(localStorage.getItem("userId")).then((res) => {
     loginUser.value = res;
   });
 });
-
+const goBack = () => {
+  router.push("/");
+};
 /* 折叠状态 */
 const isCollapse = ref(false);
 
-/* ⚡ 优化：避免频繁DOM抖动 */
+/*  优化：避免频繁DOM抖动 */
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value;
 };
@@ -239,5 +243,20 @@ const currentTitle = computed(() => {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
+}
+
+.back-btn {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #409eff;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: 0.2s;
+}
+
+.back-btn:hover {
+  background: #ecf5ff;
 }
 </style>

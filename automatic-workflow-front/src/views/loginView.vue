@@ -111,7 +111,12 @@ async function handleLogin() {
   }
   const res = await service.post("/user/login", loginForm.value);
   const result = res.data;
+
   if (res.status == 200 && result?.data?.token && result?.data?.user) {
+    if (result.data.user.status === 0) {
+      ElMessage.error("账号已被禁用，请联系管理员");
+      return;
+    }
     // 设置当前登录用户id
     localStorage.setItem("userId", result.data.user.id);
     localStorage.setItem("userName", result.data.user.username);

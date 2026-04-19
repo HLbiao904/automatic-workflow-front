@@ -113,7 +113,22 @@
         </template>
       </el-dialog>
       <!-- 模板弹窗 -->
-      <el-dialog v-model="templateDialogVisible" title="模板">
+      <el-dialog v-model="templateDialogVisible" title="模板" width="600px">
+        <el-form-item label="模板用户">
+          <el-select v-model="templateForm.userId" placeholder="选择用户">
+            <el-option
+              v-for="u in userList"
+              :key="u.id"
+              :label="u.username"
+              :value="u.id"
+            >
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-avatar :src="u.avatar" size="small" />
+                <span>{{ u.username }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
         <el-form :model="templateForm">
           <el-form-item label="名称">
             <el-input v-model="templateForm.templateName" />
@@ -157,10 +172,12 @@ import {
   createTemplate,
   updateTemplate,
 } from "@/systemManagement/src/api/template";
+import { getAllUserList } from "@/systemManagement/src/api/user";
 
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Edit, Delete } from "@element-plus/icons-vue";
 
+const userList = ref([]);
 /** 分类 */
 const categoryList = ref([]);
 const activeCategoryId = ref(0);
@@ -176,6 +193,7 @@ const templateForm = ref({
   templateName: "",
   description: "",
   categoryId: null,
+  userId: null,
 });
 /** 分类弹窗 */
 const categoryDialogVisible = ref(false);
@@ -190,8 +208,13 @@ const categoryForm = ref({
 onMounted(() => {
   loadCategoryList();
   loadTemplateList();
+  loadUserList();
 });
-
+/** 获取用户列表 */
+async function loadUserList() {
+  const res = await getAllUserList();
+  userList.value = res.data || res;
+}
 /** 分类列表 */
 async function loadCategoryList() {
   const res = await getCategoryList();
@@ -217,6 +240,7 @@ function openTemplateDialog(row) {
       templateName: "",
       description: "",
       categoryId: null,
+      userId: Number(localStorage.getItem("userId")), // 默认当前用户
     };
   }
   templateDialogVisible.value = true;

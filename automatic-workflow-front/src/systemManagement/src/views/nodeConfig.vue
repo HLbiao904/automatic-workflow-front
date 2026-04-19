@@ -25,7 +25,7 @@
         }"
         @click="switchCategory(c)"
       >
-        <img class="cat-icon" :src="c.icon || defaultCatIcon" />
+        <img class="cat-icon" :src="c.localIcon || defaultCatIcon" />
         <span>{{ c.label }}</span>
       </div>
 
@@ -45,7 +45,7 @@
           class="node-item"
           @click="selectAllNode(n)"
         >
-          <img :src="n.icon || defaultIcon" />
+          <img :src="n.localIcon || n.icon || defaultIcon" />
           <div class="text">
             <div class="name">{{ n.label }}</div>
             <div class="type">{{ n.type }}</div>
@@ -73,30 +73,45 @@
           class="card"
           @click="openDetail(n)"
         >
-          <img :src="n.localIcon || n.icon || defaultIcon" class="icon" />
+          <!-- 上半部分 -->
+          <div class="card-body">
+            <img :src="n.localIcon || n.icon || defaultIcon" class="icon" />
 
-          <div class="info">
-            <div class="name">{{ n.label }}</div>
-            <div class="desc">{{ n.description }}</div>
+            <div class="info">
+              <div class="name">{{ n.label }}</div>
+              <div class="desc">{{ n.description }}</div>
 
-            <div class="tags">
-              <el-tag size="small">{{ n.type }}</el-tag>
-              <el-tag
-                size="small"
-                :type="n.status === 1 ? 'success' : 'danger'"
-              >
-                {{ n.status === 1 ? "启用" : "禁用" }}
-              </el-tag>
+              <div class="tags">
+                <el-tag size="small">{{ n.type }}</el-tag>
+                <el-tag
+                  size="small"
+                  :type="n.status === 1 ? 'success' : 'danger'"
+                >
+                  {{ n.status === 1 ? "启用" : "禁用" }}
+                </el-tag>
+              </div>
             </div>
           </div>
 
-          <el-switch
-            v-model="n.status"
-            :active-value="1"
-            :inactive-value="0"
-            @change="toggleStatus(n)"
-            @click.stop
-          />
+          <!-- 下半部分（右下角操作区） -->
+          <div class="card-footer">
+            <el-button
+              size="small"
+              text
+              type="primary"
+              @click.stop="openEdit(n)"
+            >
+              编辑
+            </el-button>
+
+            <el-switch
+              v-model="n.status"
+              :active-value="1"
+              :inactive-value="0"
+              @change="toggleStatus(n)"
+              @click.stop
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -104,7 +119,7 @@
     <!-- ================= 右侧详情 ================= -->
     <el-drawer v-model="drawer" size="420px" title="节点详情">
       <div v-if="currentNode" class="detail">
-        <img class="detail-icon" :src="currentNode.icon || defaultIcon" />
+        <img class="detail-icon" :src="currentNode.localIcon || defaultIcon" />
 
         <h3>{{ currentNode.label }}</h3>
         <el-tag>{{ currentNode.type }}</el-tag>
@@ -171,7 +186,6 @@
         </el-form-item>
 
         <!-- 本地图标 -->
-        <!-- 本地图标 -->
         <el-form-item label="本地图标">
           <el-upload
             :show-file-list="false"
@@ -209,6 +223,46 @@
         <el-button type="primary" @click="submitCreate">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="editDialog" title="编辑节点" width="520px">
+      <el-form :model="editForm" label-width="100px">
+        <el-form-item label="NodeID">
+          <el-input v-model="editForm.nodeId" disabled />
+        </el-form-item>
+        <el-form-item label="节点名称">
+          <el-input v-model="editForm.label" />
+        </el-form-item>
+
+        <el-form-item label="节点描述">
+          <el-input v-model="editForm.description" type="textarea" />
+        </el-form-item>
+        <!-- 图标 -->
+        <el-form-item label="节点图标">
+          <el-upload
+            :show-file-list="false"
+            :auto-upload="false"
+            :on-change="handleEditUpload"
+          >
+            <img
+              v-if="editForm.localIcon"
+              :src="editForm.localIcon"
+              class="upload-preview"
+            />
+            <div v-else class="upload-box">上传图标</div>
+          </el-upload>
+        </el-form-item>
+
+        <!-- 参数 -->
+        <el-form-item label="参数(JSON)">
+          <el-input v-model="editForm.params" type="textarea" disabled />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="editDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -221,8 +275,65 @@ import {
   updateNode,
   uploadIcon,
   uploadLocalIcon,
+  addNode,
 } from "@/systemManagement/src/api/node";
+/* ================= 编辑 ================= */
+const editDialog = ref(false);
 
+const editForm = ref({
+  id: null,
+  nodeId: "",
+  description: "",
+  label: "",
+  icon: "",
+  params: "{}",
+});
+
+/* 打开编辑 */
+const openEdit = (node) => {
+  editDialog.value = true;
+
+  editForm.value = {
+    ...node,
+    params:
+      typeof node.params === "string"
+        ? node.params
+        : JSON.stringify(node.params, null, 2),
+  };
+};
+
+/* 上传图标 */
+const handleEditUpload = async (file) => {
+  const res = await uploadLocalIcon(file.raw, editForm.value.nodeId);
+  editForm.value.localIcon = res.url;
+};
+
+/* 提交编辑 */
+const submitEdit = async () => {
+  if (!editForm.value.label) {
+    ElMessage.warning("节点名称不能为空");
+    return;
+  }
+
+  try {
+    JSON.parse(editForm.value.params);
+  } catch (e) {
+    ElMessage.error("参数必须是合法JSON");
+    return;
+  }
+
+  await updateNode({
+    ...editForm.value,
+    params: editForm.value.params,
+  });
+
+  ElMessage.success("修改成功");
+
+  editDialog.value = false;
+
+  loadNodes();
+  allNodeList.value = await getAllNodeList();
+};
 /* ================= 状态 ================= */
 const keyword = ref("");
 const drawer = ref(false);
@@ -411,11 +522,16 @@ const openCreate = () => {
 const submitCreate = async () => {
   await formRef.value.validate();
 
-  await updateNode({
+  const res = await addNode({
     ...form.value,
     type: "COMMON",
   });
-
+  if (res) {
+    ElMessage.success("节点创建成功");
+  } else {
+    ElMessage.error(res.message || "节点创建失败");
+    return;
+  }
   createDialog.value = false;
   loadNodes();
   allNodeList.value = await getAllNodeList();
@@ -585,13 +701,25 @@ const formatJson = (val) => {
 }
 
 /* 卡片 */
+/* 卡片网格 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  overflow-y: auto;
+}
+
+/* 卡片 */
 .card {
   background: #fff;
   padding: 14px;
   border-radius: 12px;
+
   display: flex;
-  gap: 12px;
-  align-items: center;
+  flex-direction: column; // 关键：纵向布局
+  // justify-content: space-between;
+
+  min-height: 95px; // 建议加，统一高度
   transition: 0.2s;
   cursor: pointer;
 }
@@ -601,12 +729,21 @@ const formatJson = (val) => {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
 }
 
+/* 上半部分 */
+.card-body {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* 图标 */
 .icon {
   width: 42px;
   height: 42px;
   border-radius: 8px;
 }
 
+/* 信息区 */
 .info {
   flex: 1;
   display: flex;
@@ -627,6 +764,14 @@ const formatJson = (val) => {
 .tags {
   display: flex;
   gap: 6px;
+}
+
+/* 底部操作区（右下角） */
+.card-footer {
+  display: flex;
+  justify-content: flex-end; // 靠右
+  align-items: center;
+  gap: 10px;
 }
 
 /* ================= 右侧 ================= */
@@ -663,5 +808,13 @@ const formatJson = (val) => {
   text-align: center;
   color: #999;
   margin-top: 40px;
+}
+
+.card-footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
 }
 </style>
