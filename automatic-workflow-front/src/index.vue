@@ -121,6 +121,7 @@ const tempEdges = ref([]);
 const showAIFlowPreview = ref(false);
 const preViewAIFlowData = ref({});
 const refreshAIHistoryKey = ref(0); // 用于刷新AI生成历史记录
+const curWorkflowData = ref(null); //当前工作流数据
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
@@ -995,6 +996,7 @@ async function loadLatestVersion(workflowId) {
     `/workflow/version/${workflowId}/latest-version`,
   );
   const version = res.data;
+  curWorkflowData.value = res.data;
   // 新建工作流：没有任何版本
   if (!version) {
     // 新建工作流没有版本时往画布添加开始节点
@@ -2035,7 +2037,7 @@ function resolveSourceHandle(node, edge, index) {
       @apply-flow="applyAIFlowFromPreview"
     />
     <!-- AI Assistant -->
-    <AIAssistant v-if="viewMode === 'editor'" />
+    <AIAssistant v-if="viewMode === 'editor'" :workflowData="curWorkflowData" />
   </div>
 </template>
 
