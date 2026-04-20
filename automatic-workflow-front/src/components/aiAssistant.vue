@@ -14,6 +14,7 @@
     <el-card
       v-if="showChat"
       class="chat-panel"
+      ref="panelRef"
       :style="panelStyle"
       shadow="always"
     >
@@ -116,6 +117,7 @@ const md = new MarkdownIt({
     }
   },
 });
+const panelRef = ref(null);
 const aiState = ref("idle"); // idle | thinking | talking | success | error
 let isSending = false; // 防止重复发送
 const memoryId = ref(Date.now());
@@ -150,11 +152,18 @@ onMounted(() => {
   lottieRef.value.addEventListener("mouseleave", () => {
     animation.setSpeed(1);
   });
+
+  window.addEventListener("resize", updatePosition);
 });
 onUnmounted(() => {
   animation && animation.destroy();
+  window.removeEventListener("resize", updatePosition);
 });
 
+const updatePosition = () => {
+  x.value = Math.min(x.value, window.innerWidth - 100);
+  y.value = Math.min(y.value, window.innerHeight - 100);
+};
 const startDrag = (e) => {
   dragging = true;
   moved = false;
@@ -166,21 +175,32 @@ const startDrag = (e) => {
 };
 
 const panelStyle = computed(() => {
-  const panelWidth = 320;
-  const panelHeight = 420;
-  const gap = 5; // 和机器人留间距
+  const gap = 5;
 
-  let left = x.value + 100 + gap; //机器人宽度100
+  const panelWidth = panelRef.value?.offsetWidth || 360;
+  const panelHeight = panelRef.value?.offsetHeight || 560;
+
+  let left = x.value + 100 + gap;
   let top = y.value;
 
-  // 如果右边不够，放左边
+  // 右边放不下 → 放左边
   if (left + panelWidth > window.innerWidth) {
     left = x.value - panelWidth - gap;
   }
 
-  // 防止底部溢出
+  // 左边也超了 → 贴边
+  if (left < 0) {
+    left = 10;
+  }
+
+  // 下边超出
   if (top + panelHeight > window.innerHeight) {
     top = window.innerHeight - panelHeight - 10;
+  }
+
+  // 上边超出
+  if (top < 0) {
+    top = 10;
   }
 
   return {
