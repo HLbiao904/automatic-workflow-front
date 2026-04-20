@@ -57,9 +57,16 @@
         <div class="menuIcon"><img src="../assets/template.svg" /></div>
         <div class="menuTitle" v-if="!collapsed">Templates</div>
       </div>
-      <div class="menuItem" @click="goSystemManagement">
+      <div
+        v-if="commandStore.role === 'ADMIN'"
+        class="menuItem"
+        @click="goSystemManagement"
+      >
         <div class="menuIcon"><img src="../assets/systemManagement.svg" /></div>
-        <div class="menuTitle" v-if="!collapsed">systemManagement</div>
+        <div class="menuTitle" v-if="!collapsed">
+          systemManagement
+          <el-tag size="small" type="danger" class="admin-tag"> 管理员 </el-tag>
+        </div>
       </div>
       <el-dropdown @command="handleConfig" trigger="click">
         <div
@@ -93,8 +100,10 @@ import {
   watchEffect,
 } from "vue";
 import { useRouter } from "vue-router";
+import { useCommandStore } from "@/stores/command.js";
 
 const router = useRouter();
+const commandStore = useCommandStore();
 const activeMenu = ref("overwrite");
 function goChat() {
   activeMenu.value = "chat";

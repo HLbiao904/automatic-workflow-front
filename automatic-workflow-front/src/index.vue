@@ -61,6 +61,7 @@ import { compileMergeFlow } from "./tools/flowMergeCompiler.js";
 import createWorkflowDialog from "./components/dialog/createWorkflowDialog.vue";
 import AIFlowPreview from "./components/aIFlowPreview.vue";
 import { connectStartToEntries } from "./tools/commonTools.js";
+import AIAssistant from "./components/aiAssistant.vue";
 
 const {
   project,
@@ -2033,6 +2034,8 @@ function resolveSourceHandle(node, edge, index) {
       :preViewData="preViewAIFlowData"
       @apply-flow="applyAIFlowFromPreview"
     />
+    <!-- AI Assistant -->
+    <AIAssistant v-if="viewMode === 'editor'" />
   </div>
 </template>
 

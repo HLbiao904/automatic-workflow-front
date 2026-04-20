@@ -9,6 +9,7 @@ export const useCommandStore = defineStore("command", {
     templates: [],
     configs: ["节点配置", "用户配置"],
     sessions: [],
+    role: localStorage.getItem("role") || "user",
   }),
 
   actions: {
