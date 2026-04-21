@@ -1573,14 +1573,14 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
   refreshAIHistoryKey.value++;
 }
 async function applyAIFlowFromPreview({ aiNodes, aiEdges }) {
-  // ❗1. 防御
+  // 1. 防御
   if (!aiNodes?.length) {
     ElMessage.warning("没有可应用的流程");
     return;
   }
 
   const action = await confirmReplaceOrNew();
-  // ❗2. 处理 replace / new
+  // 2. 处理 replace / new
   if (action === "replace") {
     nodes.value = nodes.value.filter((n) => n.type?.toLowerCase() === "start");
     edges.value = [];

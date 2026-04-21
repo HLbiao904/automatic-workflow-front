@@ -8,8 +8,26 @@
       :style="{ left: x + 'px', top: y + 'px' }"
       @mousedown="startDrag"
       @click="handleClick"
+      @mouseenter="handleEnter"
+      @mouseleave="handleLeave"
     ></div>
-
+    <div
+      v-if="showTools"
+      class="robot-tools animate"
+      :class="toolDirection"
+      :style="toolStyle"
+      @mouseenter="handleEnter"
+      @mouseleave="handleLeave"
+    >
+      <div class="tool" @click="handleGenerateFlow">
+        <img src="../assets/generateWorkflow.svg" />
+        <span class="tip">生成</span>
+      </div>
+      <div class="tool" @click="handleExplain">
+        <img src="../assets/explainWorkflow.svg" />
+        <span class="tip">解释</span>
+      </div>
+    </div>
     <!-- 聊天面板 -->
     <el-card
       v-if="showChat"
@@ -123,6 +141,9 @@ const panelRef = ref(null);
 const aiState = ref("idle"); // idle | thinking | talking | success | error
 let isSending = false; // 防止重复发送
 const memoryId = ref(Date.now());
+// 机器人hover面板
+const showTools = ref(false);
+let hoverTimer = null;
 // lottie动画
 const lottieRef = ref(null);
 let animation = null;
@@ -284,9 +305,71 @@ const showChat = ref(false);
 
 const handleClick = () => {
   if (moved) return; // 防止拖动触发点击
+  showTools.value = false; // 关闭工具栏
   showChat.value = !showChat.value;
 };
+const handleEnter = () => {
+  if (showChat.value) return;
 
+  clearTimeout(hoverTimer);
+
+  hoverTimer = setTimeout(() => {
+    setAIState("thinking");
+    showTools.value = true;
+  }, 80); // 延迟一点点更自然
+};
+
+const handleLeave = () => {
+  hoverTimer = setTimeout(() => {
+    showTools.value = false;
+    setAIState("idle");
+  }, 200); // 防止抖动
+};
+
+const toolDirection = computed(() => {
+  const toolHeight = 36;
+  const gap = 8;
+
+  const top = y.value - toolHeight - gap;
+
+  // 上面放不下 → 在下面 → 箭头朝上
+  if (top < 0) {
+    return "arrow-top";
+  }
+
+  // 默认在上面 → 箭头朝下
+  return "arrow-bottom";
+});
+const toolStyle = computed(() => {
+  const gap = 4;
+  const arrowSize = 6;
+
+  const robotSize = 100;
+  const toolWidth = 120;
+  const toolHeight = 36;
+
+  let left = x.value + robotSize / 2 - toolWidth / 2;
+  let top = y.value - toolHeight - gap - arrowSize;
+
+  // 上方不够 → 放下面
+  if (top < 0) {
+    top = y.value + robotSize + gap + arrowSize;
+  }
+
+  // 左右边界
+  if (left + toolWidth > window.innerWidth) {
+    left = window.innerWidth - toolWidth - 10;
+  }
+
+  if (left < 0) {
+    left = 10;
+  }
+
+  return {
+    left: left + "px",
+    top: top + "px",
+  };
+});
 // ================== 聊天 ==================
 const messages = ref([
   {
@@ -493,6 +576,20 @@ const handleExplain = async () => {
   setAIState("idle");
 };
 
+const handleGenerateFlow = async () => {
+  console.log("生成工作流");
+  /*   const res = await service.post("/api/ai/generateFlow", {
+    prompt: "根据当前上下文生成工作流",
+  });
+
+  window.executeAction && window.executeAction(res.data);
+
+  messages.value.push({
+    id: Date.now(),
+    role: "ai",
+    text: "已帮你生成工作流",
+  }); */
+};
 const handleOptimize = async () => {
   const res = await service.post("/api/ai/action", {
     prompt: "优化当前工作流",
@@ -810,7 +907,116 @@ const handleClear = async () => {
 .send-btn:active {
   transform: translateY(-50%) scale(0.95);
 }
+.robot-tools {
+  position: fixed;
+  z-index: 10000;
 
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+
+  border-radius: 16px;
+
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+
+  animation: popIn 0.2s ease;
+}
+.robot-tools.arrow-bottom::after {
+  content: "";
+  position: absolute;
+
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 0;
+  height: 0;
+
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.95);
+}
+.robot-tools.arrow-top::after {
+  content: "";
+  position: absolute;
+
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 0;
+  height: 0;
+
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(255, 255, 255, 0.95);
+}
+.tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+
+  background: #f5f7fa;
+  transition: all 0.2s;
+  img {
+    width: 14px;
+    height: 14px;
+  }
+  .tip {
+    margin-left: 4px;
+  }
+}
+
+.tool:hover {
+  background: #409eff;
+  color: #fff;
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.robot-tools.animate {
+  transform-origin: center;
+  animation: toolPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes toolPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) translateY(10px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
 /* ================= 光标 ================= */
 .cursor {
   animation: blink 1s infinite;
