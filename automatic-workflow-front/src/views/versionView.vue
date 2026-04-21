@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, markRaw, watch, onUpdated } from "vue";
+import { ref, onMounted, markRaw, watch, onUpdated, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { VueFlow } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
@@ -13,6 +13,11 @@ import ForNode from "../nodes/forNode.vue";
 import BooleanNode from "../nodes/booleanNode.vue";
 import WhenNode from "../nodes/whenNode.vue";
 import DefaultEdge from "../edges/defaultEdge.vue";
+import defaultAvatar from "@/assets/user.svg";
+
+const currentVersion = computed(() => {
+  return versions.value.find((v) => v.id === activeVersionId.value) || null;
+});
 const nodeTypes = {
   common: markRaw(CommonNode),
   switch: markRaw(SwitchNode),
@@ -138,7 +143,13 @@ onMounted(loadVersions);
       <div class="header">版本历史</div>
 
       <div class="version-list" v-loading="loading">
+        <div v-if="!loading && versions.length === 0" class="empty-box">
+          <div class="icon">📦</div>
+          <div class="title">暂无版本</div>
+          <div class="desc">发布后这里会显示版本历史</div>
+        </div>
         <div
+          v-else
           v-for="v in versions"
           :key="v.id"
           class="version-item"
@@ -156,31 +167,27 @@ onMounted(loadVersions);
     <!-- 右侧：版本预览 -->
     <div class="version-preview">
       <div class="preview-canvas">
+        <!-- 空状态 -->
+        <div v-if="!activeVersionId" class="empty-box center">
+          <div class="icon">🧩</div>
+          <div class="title">未选择版本</div>
+          <div class="desc">点击左侧版本进行预览</div>
+        </div>
         <!-- 左上：版本信息 -->
         <div v-if="activeVersionId" class="version-overlay version-info">
           <div class="version-date">
-            {{
-              formatTime(
-                versions.find((v) => v.id === activeVersionId)?.createdAt,
-              )
-            }}
+            {{ formatTime(currentVersion?.createdAt) }}
           </div>
           <div class="version-meta">
             <!-- 用户信息 -->
             <div class="user-info">
               <img
                 class="avatar"
-                :src="
-                  versions.find((v) => v.id === activeVersionId)?.avatar ||
-                  'https://via.placeholder.com/40'
-                "
+                :src="currentVersion?.avatar || defaultAvatar"
               />
               <div class="user-text">
                 <div class="username">
-                  {{
-                    versions.find((v) => v.id === activeVersionId)?.username ||
-                    "未知用户"
-                  }}
+                  {{ currentVersion?.username || "未知用户" }}
                 </div>
                 <div class="label">创建者</div>
               </div>
@@ -190,9 +197,7 @@ onMounted(loadVersions);
             <div class="meta-item">
               <span class="meta-label">执行</span>
               <span class="meta-value">
-                {{
-                  versions.find((v) => v.id === activeVersionId)?.executionCount
-                }}
+                {{ currentVersion?.executionCount }}
               </span>
             </div>
           </div>
@@ -423,5 +428,34 @@ onMounted(loadVersions);
       height: 100%;
     }
   }
+}
+
+.empty-box {
+  text-align: center;
+  color: #909399;
+  padding: 20px;
+}
+
+.empty-box.center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.empty-box .icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.empty-box .title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.empty-box .desc {
+  font-size: 12px;
+  color: #909399;
 }
 </style>

@@ -206,6 +206,14 @@ function formatTime(ts) {
   <div class="executions-panel">
     <!-- 左：execution 列表 -->
     <div class="exec-list">
+      <!-- 空状态 -->
+      <div v-if="executions.length === 0" class="exec-empty-list">
+        <div class="empty-box">
+          <div class="icon">📭</div>
+          <div class="title">暂无执行记录</div>
+          <div class="desc">运行工作流后，这里会显示执行历史</div>
+        </div>
+      </div>
       <div
         v-for="exec in executions"
         :key="exec.id"
@@ -310,6 +318,9 @@ function formatTime(ts) {
         <div v-show="!collapsed" class="exec-body">
           <!-- 左侧节点列表 -->
           <div class="node-list">
+            <div v-if="executionDetailNodes.length === 0" class="node-empty">
+              暂无节点执行数据
+            </div>
             <div
               v-for="(en, i) in executionDetailNodes"
               :key="i"
@@ -455,13 +466,25 @@ function formatTime(ts) {
             </template>
 
             <!-- 未选择节点 -->
-            <div v-else class="node-empty">请选择一个节点查看运行数据</div>
+            <div v-else class="node-empty">
+              <div class="empty-box">
+                <div class="icon">🧩</div>
+                <div class="title">未选择节点</div>
+                <div class="desc">点击左侧节点查看输入输出数据</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="exec-empty" v-else>请选择一次执行</div>
+    <div class="exec-empty" v-else>
+      <div class="empty-box">
+        <div class="icon">📭</div>
+        <div class="title">暂无执行记录</div>
+        <div class="desc">运行一次工作流后，这里会显示执行历史</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -927,5 +950,43 @@ function formatTime(ts) {
   display: flex;
   gap: 20px;
   flex: 1;
+}
+
+.exec-empty-list {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.exec-empty,
+.node-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-box {
+  text-align: center;
+  color: #909399;
+  animation: fadeInUp 0.25s ease;
+}
+
+.empty-box .icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.empty-box .title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 4px;
+}
+
+.empty-box .desc {
+  font-size: 12px;
+  color: #909399;
 }
 </style>
