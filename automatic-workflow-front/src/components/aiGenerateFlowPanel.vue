@@ -78,12 +78,22 @@
           <!-- 右侧操作 -->
           <div class="history-actions">
             <el-button
+              class="btn"
               size="small"
               type="primary"
               text
               @click.stop="previewFlow(item)"
             >
               预览
+            </el-button>
+            <el-button
+              class="btn"
+              size="small"
+              type="danger"
+              text
+              @click.stop="deleteHistory(item)"
+            >
+              删除
             </el-button>
           </div>
         </div>
@@ -213,6 +223,26 @@ async function generateFlow() {
 function previewFlow(item) {
   emit("preview-flow", item);
 }
+function deleteHistory(item) {
+  ElMessageBox.confirm("确定要删除这条历史记录吗？", "删除确认", {
+    confirmButtonText: "删除",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      service
+        .delete(`/ai/workflow/history/${item.id}`)
+        .then(() => {
+          ElMessage.success("删除成功");
+          fetchHistory(); // 刷新列表
+        })
+        .catch((e) => {
+          console.error("删除历史记录失败", e);
+          ElMessage.error("删除失败");
+        });
+    })
+    .catch(() => {});
+}
 // 应用到画布
 function applyFlow() {
   emit("apply-flow");
@@ -294,7 +324,7 @@ function formatTime(timeStr) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .ai-panel {
   display: flex;
   flex-direction: column;
@@ -437,7 +467,15 @@ function formatTime(timeStr) {
 
 /* 右侧按钮 */
 .history-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   margin-left: 10px;
+  .btn {
+    padding: 0;
+    margin: 0;
+  }
 }
 
 /* ===== 滚动条美化 ===== */

@@ -1592,17 +1592,17 @@ async function applyAIFlowFromPreview({ aiNodes, aiEdges }) {
     edges.value = [];
   }
 
-  // ❗3. 合并 AI 流程
+  // 3. 合并 AI 流程
   nodes.value.push(...aiNodes);
   edges.value.push(...aiEdges);
 
-  // ❗4. 自动连接 start → AI入口节点（核心）
+  // 4. 自动连接 start → AI入口节点（核心）
   connectStartToEntries(aiNodes, edges.value, nodes.value);
 
-  // ❗5. 自动布局
+  // 5. 自动布局
   autoLayout("LR");
 
-  // ❗6. 生成表达式
+  // 6. 生成表达式
   const elExpression = compileMergeFlow(nodes.value, edges.value);
   console.log("生成的EL表达式:", elExpression);
 
