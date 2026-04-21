@@ -141,6 +141,7 @@ let projectFn = null;
 const showDropdownMenu = ref(false);
 const dropMenuPos = ref({ x: 60, y: 38 });
 const dropDownMenuRef = ref(null);
+const aiFlowPanelRef = ref(null);
 
 onMounted(async () => {
   await nextTick();
@@ -1707,6 +1708,10 @@ function openCreateDialog() {
     resolveCreate = resolve;
   });
 }
+function handleGenerateFlow() {
+  showAiFlowPanel.value = true;
+  aiFlowPanelRef.value.triggerFlash();
+}
 function handleCreateSuccess(data) {
   showCreateWorkflowDialog.value = false;
   viewMode.value = "editor";
@@ -1839,6 +1844,7 @@ function resolveSourceHandle(node, edge, index) {
         ></el-button>
       </div>
       <AiFlowPanel
+        ref="aiFlowPanelRef"
         @generate-success="handleAIGenerateFlow"
         @apply-flow="ApplyAIGenerateFlow"
         @preview-flow="previewAiFlow"
@@ -2034,7 +2040,11 @@ function resolveSourceHandle(node, edge, index) {
       @apply-flow="applyAIFlowFromPreview"
     />
     <!-- AI Assistant -->
-    <AIAssistant v-if="viewMode === 'editor'" :workflowData="curWorkflowData" />
+    <AIAssistant
+      v-if="viewMode === 'editor'"
+      :workflowData="curWorkflowData"
+      @generate-flow="handleGenerateFlow"
+    />
   </div>
 </template>
 

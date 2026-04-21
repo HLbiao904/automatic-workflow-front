@@ -1,5 +1,5 @@
 <template>
-  <div class="ai-panel">
+  <div class="ai-panel" :class="{ flash: flashActive }">
     <!-- 头部 -->
     <div class="panel-header">
       <div class="title">✨ AI流程生成</div>
@@ -112,6 +112,7 @@ const emit = defineEmits(["generate-success", "apply-flow", "preview-flow"]);
 
 const prompt = ref("");
 const loading = ref(false);
+const flashActive = ref(false);
 onMounted(async () => {
   const res = await service.get("/ai/workflow/history/list", {
     params: {
@@ -127,6 +128,17 @@ watch(
     fetchHistory(); // 重新请求
   },
 );
+
+function triggerFlash() {
+  flashActive.value = true;
+  setTimeout(() => {
+    flashActive.value = false;
+  }, 600);
+}
+
+defineExpose({
+  triggerFlash,
+});
 // ================= 模板 =================
 const templateKeyword = ref("");
 
@@ -332,8 +344,29 @@ function formatTime(timeStr) {
   gap: 10px;
   box-sizing: border-box;
   padding: 10px;
+  border-left: 3px solid transparent;
 }
 
+.ai-panel.flash {
+  animation: panelFlash 0.6s ease;
+}
+
+@keyframes panelFlash {
+  0% {
+    box-shadow: 0 0 0 rgba(64, 158, 255, 0);
+    border-left: 3px solid transparent;
+  }
+  30% {
+    box-shadow: 0 0 12px rgba(64, 158, 255, 0.6);
+    border-left: 3px solid #409eff;
+    background: rgba(64, 158, 255, 0.08);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(64, 158, 255, 0);
+    border-left: 3px solid transparent;
+    background: transparent;
+  }
+}
 /* ===== 标题 ===== */
 .panel-header .title {
   font-size: 15px;

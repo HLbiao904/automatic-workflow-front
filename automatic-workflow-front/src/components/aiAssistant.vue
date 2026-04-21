@@ -21,11 +21,11 @@
     >
       <div class="tool" @click="handleGenerateFlow">
         <img src="../assets/generateWorkflow.svg" />
-        <span class="tip">生成</span>
+        <span class="tip">生成工作流</span>
       </div>
-      <div class="tool" @click="handleExplain">
+      <div class="tool" @click="handleExplainFromToolbar">
         <img src="../assets/explainWorkflow.svg" />
-        <span class="tip">解释</span>
+        <span class="tip">解释工作流</span>
       </div>
     </div>
     <!-- 聊天面板 -->
@@ -161,6 +161,7 @@ const props = defineProps({
     default: null,
   },
 });
+const emit = defineEmits(["generate-flow"]);
 onMounted(() => {
   animation = lottie.loadAnimation({
     container: lottieRef.value,
@@ -575,20 +576,22 @@ const handleExplain = async () => {
 
   setAIState("idle");
 };
+const handleExplainFromToolbar = async () => {
+  // 关闭工具栏
+  showTools.value = false;
 
+  // 打开面板
+  showChat.value = true;
+
+  // 等DOM渲染完成
+  await nextTick();
+
+  // 调用原逻辑
+  handleExplain();
+};
 const handleGenerateFlow = async () => {
-  console.log("生成工作流");
-  /*   const res = await service.post("/api/ai/generateFlow", {
-    prompt: "根据当前上下文生成工作流",
-  });
-
-  window.executeAction && window.executeAction(res.data);
-
-  messages.value.push({
-    id: Date.now(),
-    role: "ai",
-    text: "已帮你生成工作流",
-  }); */
+  emit("generate-flow");
+  showTools.value = false;
 };
 const handleOptimize = async () => {
   const res = await service.post("/api/ai/action", {
