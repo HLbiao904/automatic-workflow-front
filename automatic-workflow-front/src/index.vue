@@ -996,7 +996,7 @@ async function loadLatestVersion(workflowId) {
     `/workflow/version/${workflowId}/latest-version`,
   );
   const version = res.data;
-  curWorkflowData.value = res.data;
+  curWorkflowData.value = res.data || {};
   // 新建工作流：没有任何版本
   if (!version) {
     // 新建工作流没有版本时往画布添加开始节点
@@ -1580,7 +1580,6 @@ async function applyAIFlowFromPreview({ aiNodes, aiEdges }) {
   }
 
   const action = await confirmReplaceOrNew();
-
   // ❗2. 处理 replace / new
   if (action === "replace") {
     nodes.value = nodes.value.filter((n) => n.type?.toLowerCase() === "start");
@@ -1591,8 +1590,6 @@ async function applyAIFlowFromPreview({ aiNodes, aiEdges }) {
 
     nodes.value = nodes.value.filter((n) => n.type?.toLowerCase() === "start");
     edges.value = [];
-  } else {
-    return;
   }
 
   // ❗3. 合并 AI 流程

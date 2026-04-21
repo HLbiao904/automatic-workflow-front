@@ -18,7 +18,6 @@ function extractNodeMap(nodes) {
       },
     };
   });
-
   return result;
 }
 // 格式化edges
@@ -118,7 +117,6 @@ export default function buildAIPrompt(nodes, edges) {
 
       desc += "\n";
     });
-
     desc += "\n";
   });
 

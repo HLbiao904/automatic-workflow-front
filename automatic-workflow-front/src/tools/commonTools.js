@@ -103,7 +103,6 @@ export function layoutNodes(
 // 流程连接函数：将“开始”节点连接到所有没有入边的 AI 流程节点
 export function connectStartToEntries(aiNodes, allEdges, allNodes) {
   const startNode = allNodes.find((n) => n.type?.toLowerCase() === "start");
-
   if (!startNode) return;
 
   // 所有 target（已有入边的节点）
