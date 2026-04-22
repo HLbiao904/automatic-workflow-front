@@ -109,6 +109,15 @@
         </div>
       </div>
     </el-card>
+
+    <RobotBubble
+      ref="bubbleRef"
+      :show="props.bubbleShow"
+      @update:show="(val) => emit('update:bubbleShow', val)"
+      :message="props.bubbleMessage"
+      :actions="props.bubbleActions"
+      :style="bubbleStyle"
+    />
   </div>
 </template>
 
@@ -123,7 +132,10 @@ import "highlight.js/styles/github.css";
 // import "github-markdown-css/github-markdown.css";
 import { buildFlowForAI } from "@/tools/formatJson.js";
 import { Connection, MagicStick, DeleteFilled } from "@element-plus/icons-vue";
+import RobotBubble from "./RobotBubble.vue";
+import { useFloatingPosition } from "@/tools/useFloatingPosition.js";
 
+const { getPosition } = useFloatingPosition();
 // 代码高亮
 const md = new MarkdownIt({
   html: true, // 支持HTML
@@ -137,6 +149,7 @@ const md = new MarkdownIt({
     }
   },
 });
+const bubbleRef = ref(null);
 const panelRef = ref(null);
 const aiState = ref("idle"); // idle | thinking | talking | success | error
 let isSending = false; // 防止重复发送
@@ -160,8 +173,18 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  bubbleShow: Boolean,
+  bubbleMessage: String,
+  bubbleActions: {
+    type: Array,
+    default: () => [],
+  },
+  bubbleStyle: {
+    type: Object,
+    default: () => ({}),
+  },
 });
-const emit = defineEmits(["generate-flow"]);
+const emit = defineEmits(["generate-flow", "update:bubbleShow"]);
 onMounted(() => {
   animation = lottie.loadAnimation({
     container: lottieRef.value,
@@ -204,38 +227,16 @@ const startDrag = (e) => {
 };
 
 const panelStyle = computed(() => {
-  const gap = 5;
-
-  const panelWidth = panelRef.value?.offsetWidth || 360;
-  const panelHeight = panelRef.value?.offsetHeight || 560;
-
-  let left = x.value + 100 + gap;
-  let top = y.value;
-
-  // 右边放不下 → 放左边
-  if (left + panelWidth > window.innerWidth) {
-    left = x.value - panelWidth - gap;
-  }
-
-  // 左边也超了 → 贴边
-  if (left < 0) {
-    left = 10;
-  }
-
-  // 下边超出
-  if (top + panelHeight > window.innerHeight) {
-    top = window.innerHeight - panelHeight - 10;
-  }
-
-  // 上边超出
-  if (top < 0) {
-    top = 10;
-  }
-
-  return {
-    left: left + "px",
-    top: top + "px",
-  };
+  return getPosition({
+    anchorX: x.value,
+    anchorY: y.value,
+    anchorWidth: 100,
+    anchorHeight: 100,
+    elWidth: panelRef.value?.offsetWidth || 380,
+    elHeight: panelRef.value?.offsetHeight || 580,
+    gap: 8,
+    placement: "right",
+  });
 });
 const onMove = (e) => {
   if (!dragging) return;
@@ -342,34 +343,37 @@ const toolDirection = computed(() => {
   return "arrow-bottom";
 });
 const toolStyle = computed(() => {
-  const gap = 4;
-  const arrowSize = 6;
+  return getPosition({
+    anchorX: x.value,
+    anchorY: y.value,
+    anchorWidth: 100,
+    anchorHeight: 100,
+    elWidth: 120,
+    elHeight: 36,
+    gap: 6,
+    placement: "top",
+  });
+});
 
-  const robotSize = 100;
-  const toolWidth = 120;
-  const toolHeight = 36;
-
-  let left = x.value + robotSize / 2 - toolWidth / 2;
-  let top = y.value - toolHeight - gap - arrowSize;
-
-  // 上方不够 → 放下面
-  if (top < 0) {
-    top = y.value + robotSize + gap + arrowSize;
+const bubbleStyle = computed(() => {
+  if (props.bubbleStyle && Object.keys(props.bubbleStyle).length > 0) {
+    return props.bubbleStyle;
   }
 
-  // 左右边界
-  if (left + toolWidth > window.innerWidth) {
-    left = window.innerWidth - toolWidth - 10;
-  }
+  const el = bubbleRef.value?.bubbleRef;
+  const width = el?.offsetWidth || 200;
+  const height = el?.offsetHeight || 80;
 
-  if (left < 0) {
-    left = 10;
-  }
-
-  return {
-    left: left + "px",
-    top: top + "px",
-  };
+  return getPosition({
+    anchorX: x.value,
+    anchorY: y.value,
+    anchorWidth: 100,
+    anchorHeight: 100,
+    elWidth: width,
+    elHeight: height,
+    gap: 0, // 建议改小一点
+    placement: "right", // 关键点
+  });
 });
 // ================== 聊天 ==================
 const messages = ref([
