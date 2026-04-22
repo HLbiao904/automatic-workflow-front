@@ -80,12 +80,9 @@ const close = () => {
 .robot-bubble {
   position: fixed;
   z-index: 10001;
-
-  max-width: 240px; /* 再收窄一点 */
-  min-width: 100px;
-
-  padding: 8px 10px; /* 原来 12 → 8 */
-
+  max-width: 260px;
+  min-width: 50px;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(10px);
 
@@ -93,7 +90,7 @@ const close = () => {
 
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
 
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
 
   word-break: break-word;
@@ -101,13 +98,14 @@ const close = () => {
   display: flex;
   flex-direction: column;
   gap: 4px; /* 再缩 */
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
 }
 
 /* 内容 */
 .bubble-content {
   color: #333;
   padding-bottom: 6px;
-
+  text-align: center;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
@@ -136,8 +134,45 @@ const close = () => {
 
   font-size: 12px;
   opacity: 0.5;
+  cursor: pointer;
 }
 .bubble-close:hover {
   opacity: 1;
+}
+
+/* ===== 气泡弹出动画 ===== */
+.bubble-fade-enter-active {
+  animation: bubbleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bubble-fade-leave-active {
+  animation: bubbleOut 0.15s ease forwards;
+}
+
+/* 出现（带一点弹性） */
+@keyframes bubbleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(8px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 消失 */
+@keyframes bubbleOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8) translateY(6px);
+  }
 }
 </style>

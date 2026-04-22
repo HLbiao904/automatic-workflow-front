@@ -143,31 +143,9 @@ const dropMenuPos = ref({ x: 60, y: 38 });
 const dropDownMenuRef = ref(null);
 const aiFlowPanelRef = ref(null);
 // 机器人气泡
-const bubbleShow = ref(true);
-const bubbleMessage = ref("123");
-const bubbleActions = ref([
-  {
-    label: "生成工作流",
-    type: "primary",
-    onClick: () => {
-      console.log("生成工作流");
-    },
-  },
-  {
-    label: "解释一下",
-    type: "success",
-    onClick: () => {
-      console.log("解释");
-    },
-  },
-  {
-    label: "关闭",
-    type: "default",
-    onClick: () => {
-      console.log("关闭");
-    },
-  },
-]);
+const bubbleShow = ref(false);
+const bubbleMessage = ref("");
+const bubbleActions = ref([]);
 
 onMounted(async () => {
   await nextTick();
@@ -745,33 +723,46 @@ async function generateEL() {
       });
       ElMessage.warning(res1.message);
       // 是否默认填充参数
-      ElMessageBox.confirm("是否需要填充默认参数？", "参数填充", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        confirmButtonClass: "el-button--danger",
-        type: "warning",
-      })
-        .then(() => {
-          // 填充参数,将缺失参数用默认值补齐,保持引用
-          activeNodes.forEach((node) => {
-            if (!node?.data?.params) return;
-            node.data.params.forEach((p) => {
-              const isEmpty =
-                p.value === undefined ||
-                p.value === null ||
-                (typeof p.value === "string" && p.value.trim() === "");
+      bubbleMessage.value = "是否需要填充默认参数？";
 
-              if (isEmpty && p.defaultValue !== undefined) {
-                p.value = p.defaultValue;
-              }
+      bubbleActions.value = [
+        {
+          label: "取消",
+          type: "default",
+          onClick: () => {
+            bubbleShow.value = false;
+          },
+        },
+        {
+          label: "确定",
+          type: "primary",
+          onClick: () => {
+            // ===== 原逻辑 =====
+            activeNodes.forEach((node) => {
+              if (!node?.data?.params) return;
+
+              node.data.params.forEach((p) => {
+                const isEmpty =
+                  p.value === undefined ||
+                  p.value === null ||
+                  (typeof p.value === "string" && p.value.trim() === "");
+
+                if (isEmpty && p.defaultValue !== undefined) {
+                  p.value = p.defaultValue;
+                }
+              });
             });
-          });
-          // 参数填充完毕后重置状态
-          res1.nodeIds.forEach((id) => {
-            updateNodeStatus(id, "normal");
-          });
-        })
-        .catch(() => {});
+
+            res1.nodeIds.forEach((id) => {
+              updateNodeStatus(id, "normal");
+            });
+
+            bubbleShow.value = false;
+          },
+        },
+      ];
+
+      bubbleShow.value = true;
       return;
     }
     // 每次执行工作流重置nodes和edges状态
