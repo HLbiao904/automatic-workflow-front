@@ -27,6 +27,10 @@
         <img src="../assets/explainWorkflow.svg" />
         <span class="tip">解释工作流</span>
       </div>
+      <div class="tool" @click="handleOptimizeFromToolbar">
+        <img src="../assets/optimizeWorkflow.svg" />
+        <span class="tip">优化建议</span>
+      </div>
     </div>
     <!-- 聊天面板 -->
     <el-card
@@ -56,7 +60,7 @@
 
           <div class="tool-btn" @click="handleOptimize">
             <el-icon><MagicStick /></el-icon>
-            <span>优化</span>
+            <span>优化建议</span>
           </div>
 
           <div class="tool-btn danger" @click="handleClear">
@@ -580,6 +584,93 @@ const handleExplain = async () => {
 
   setAIState("idle");
 };
+
+const handleOptimize = async () => {
+  setAIState("thinking");
+
+  // 获取当前工作流数据
+  const nodes = JSON.parse(props.workflowData.nodesJson);
+  const edges = JSON.parse(props.workflowData.edgesJson);
+  const formatData = buildFlowForAI(nodes, edges);
+
+  // 创建AI消息（流式）
+  const aiMsg = {
+    id: Date.now(),
+    role: "ai",
+    text: "",
+    html: "",
+    streaming: true,
+  };
+  messages.value.push(aiMsg);
+
+  await nextTick();
+  scrollToBottom();
+
+  // 请求后端（优化接口）
+  const response = await fetch(
+    "http://127.0.0.1:8080/AIRobot/optimizeWorkflow",
+    {
+      method: "POST",
+      headers: {
+        authorization: localStorage.getItem("token"),
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        memoryId: Date.now(),
+        message: JSON.stringify(formatData),
+      }),
+    },
+  );
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+
+  let buffer = "";
+  let result = "";
+
+  setAIState("talking");
+
+  // 处理流式数据
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+
+      const text = line.slice(5).trim();
+
+      if (text === "") {
+        result += "\n";
+        continue;
+      }
+
+      if (text === "[DONE]") break;
+
+      result += text;
+    }
+
+    // 实时更新
+    aiMsg.text = result;
+    messages.value = [...messages.value];
+
+    scrollToBottom();
+  }
+
+  // 渲染 markdown
+  aiMsg.streaming = false;
+  aiMsg.html = md.render(result);
+
+  messages.value = [...messages.value];
+
+  setAIState("idle");
+};
 const handleExplainFromToolbar = async () => {
   // 关闭工具栏
   showTools.value = false;
@@ -593,23 +684,22 @@ const handleExplainFromToolbar = async () => {
   // 调用原逻辑
   handleExplain();
 };
+const handleOptimizeFromToolbar = async () => {
+  // 关闭工具栏
+  showTools.value = false;
+
+  // 打开面板
+  showChat.value = true;
+
+  // 等DOM渲染完成
+  await nextTick();
+
+  // 调用原逻辑
+  handleOptimize();
+};
 const handleGenerateFlow = async () => {
   emit("generate-flow");
   showTools.value = false;
-};
-const handleOptimize = async () => {
-  const res = await service.post("/api/ai/action", {
-    prompt: "优化当前工作流",
-  });
-
-  // 执行画布操作
-  window.executeAction && window.executeAction(res.data);
-
-  messages.value.push({
-    id: Date.now(),
-    role: "ai",
-    text: "已帮你添加节点",
-  });
 };
 
 const handleClear = async () => {
