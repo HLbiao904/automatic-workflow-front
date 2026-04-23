@@ -1760,6 +1760,10 @@ function handleGenerateFlow() {
 function handleBubbleShow(val) {
   bubbleShow.value = val;
 }
+function updateCurWorkflowData() {
+  curWorkflowData.value.nodesJson = JSON.stringify(nodes.value);
+  curWorkflowData.value.edgesJson = JSON.stringify(edges.value);
+}
 function handleCreateSuccess(data) {
   showCreateWorkflowDialog.value = false;
   viewMode.value = "editor";
@@ -2096,6 +2100,7 @@ function resolveSourceHandle(node, edge, index) {
       :bubbleMessage="bubbleMessage"
       :bubbleActions="bubbleActions"
       @update:bubbleShow="handleBubbleShow"
+      @update-workflow-data="updateCurWorkflowData"
     />
   </div>
 </template>

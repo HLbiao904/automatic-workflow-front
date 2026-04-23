@@ -188,7 +188,12 @@ const props = defineProps({
     default: () => ({}),
   },
 });
-const emit = defineEmits(["generate-flow", "update:bubbleShow"]);
+const emit = defineEmits([
+  "generate-flow",
+  "update:bubbleShow",
+  "update:bubbleMessage",
+  "update-workflow-data",
+]);
 onMounted(() => {
   animation = lottie.loadAnimation({
     container: lottieRef.value,
@@ -504,7 +509,7 @@ const sendMessage = async () => {
 // ================== 工具栏 ==================
 const handleExplain = async () => {
   setAIState("thinking");
-
+  emit("update-workflow-data"); //获取当前工作流数据
   const nodes = JSON.parse(props.workflowData.nodesJson);
   const edges = JSON.parse(props.workflowData.edgesJson);
   const formatData = buildFlowForAI(nodes, edges);
@@ -587,7 +592,7 @@ const handleExplain = async () => {
 
 const handleOptimize = async () => {
   setAIState("thinking");
-
+  emit("update-workflow-data"); //获取当前工作流数据
   // 获取当前工作流数据
   const nodes = JSON.parse(props.workflowData.nodesJson);
   const edges = JSON.parse(props.workflowData.edgesJson);

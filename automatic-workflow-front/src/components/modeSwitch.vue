@@ -47,11 +47,19 @@ function checkVersions() {
 <style lang="scss" scoped>
 .mode-switch {
   display: inline-flex;
-  padding: 4px;
-  border-radius: 10px;
-  background: #f3f5f7;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 6px;
+  border-radius: 12px;
   gap: 4px;
+
+  /* 🌟 毛玻璃核心 */
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  /* 🌟 边框 + 阴影 */
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4);
 }
 
 /* 单个按钮 */
@@ -60,7 +68,7 @@ function checkVersions() {
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: #666;
+  color: rgba(0, 0, 0, 0.6);
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.25s ease;
@@ -73,14 +81,23 @@ function checkVersions() {
 /* hover */
 .mode-item:hover {
   color: #409eff;
+  background: rgba(255, 255, 255, 0.4);
 }
 
 /* 激活状态 */
 .mode-item.active {
   color: #409eff;
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15),
-    0 0 0 1px rgba(64, 158, 255, 0.1);
+
+  /* 半透明白高亮 */
+  background: rgba(255, 255, 255, 0.6);
+
+  /* 局部模糊叠加 */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  /* 高级阴影 */
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
 /* 点击反馈 */
