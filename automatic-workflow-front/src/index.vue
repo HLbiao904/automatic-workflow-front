@@ -146,6 +146,8 @@ const aiFlowPanelRef = ref(null);
 const bubbleShow = ref(false);
 const bubbleMessage = ref("");
 const bubbleActions = ref([]);
+const bubbleAutoClose = ref(0);
+const bubbleStyle = ref({});
 
 onMounted(async () => {
   await nextTick();
@@ -844,6 +846,19 @@ async function generateEL() {
           "api/workflowExecute/saveExecuteDetail",
           executionDetailNode,
         );
+        // 工作流执行失败bubble
+        bubbleMessage.value = "执行失败 ❌";
+        bubbleActions.value = []; // 不要按钮
+        bubbleAutoClose.value = 3000; // 3秒关闭
+
+        bubbleStyle.value = {
+          background: "rgba(254, 242, 242, 0.95)", // 柔和浅红
+          color: "#dc2626", // 主红
+          border: "1px solid rgba(239, 68, 68, 0.3)",
+          boxShadow: "0 6px 18px rgba(239, 68, 68, 0.25)",
+        };
+
+        bubbleShow.value = true;
       }
       if (event === "FLOW_FINISH") {
         // WebSocket推送完成status后,更新nodes和edges
@@ -878,6 +893,19 @@ async function generateEL() {
     const duration = res.data.duration; // 工作流执行时间
     if (status == "SUCCESS") {
       ElMessage.success("工作流执行成功");
+
+      bubbleMessage.value = "执行成功 🎉";
+      bubbleActions.value = []; // 无按钮
+      bubbleAutoClose.value = 3000; // 3秒关闭
+
+      bubbleStyle.value = {
+        background: "rgba(240, 253, 244, 0.95)", // 柔和浅绿
+        color: "#16a34a", // 主绿（不刺眼）
+        border: "1px solid rgba(34, 197, 94, 0.3)",
+        boxShadow: "0 6px 18px rgba(34, 197, 94, 0.25)",
+      };
+
+      bubbleShow.value = true;
     }
     // 更新execution状态和运行时间
     const res3 = await service.put("api/workflowExecute/updateExecution", {
@@ -1120,6 +1148,12 @@ watch(viewMode, (val) => {
         viewMode.value = "editor";
         sideBarActiveMenu.value = { viewMode: "overwrite" };
       });
+  }
+});
+// 机器人bubble关闭后,清空样式
+watch(bubbleShow, (val) => {
+  if (!val) {
+    bubbleStyle.value = {}; // 自动清空
   }
 });
 async function onSave() {
@@ -2099,6 +2133,8 @@ function resolveSourceHandle(node, edge, index) {
       :bubbleShow="bubbleShow"
       :bubbleMessage="bubbleMessage"
       :bubbleActions="bubbleActions"
+      :bubbleAutoClose="bubbleAutoClose"
+      :bubbleStyle="bubbleStyle"
       @update:bubbleShow="handleBubbleShow"
       @update-workflow-data="updateCurWorkflowData"
     />

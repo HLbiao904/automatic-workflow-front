@@ -121,6 +121,7 @@
       :message="props.bubbleMessage"
       :actions="props.bubbleActions"
       :style="bubbleStyle"
+      :autoClose="props.bubbleAutoClose"
     />
   </div>
 </template>
@@ -186,6 +187,14 @@ const props = defineProps({
   bubbleStyle: {
     type: Object,
     default: () => ({}),
+  },
+  bubbleAutoClose: {
+    type: Boolean,
+    default: true,
+  },
+  bubbleAutoClose: {
+    type: Number,
+    default: 0,
   },
 });
 const emit = defineEmits([
@@ -365,24 +374,27 @@ const toolStyle = computed(() => {
 });
 
 const bubbleStyle = computed(() => {
-  if (props.bubbleStyle && Object.keys(props.bubbleStyle).length > 0) {
-    return props.bubbleStyle;
-  }
-
   const el = bubbleRef.value?.bubbleRef;
   const width = el?.offsetWidth || 200;
   const height = el?.offsetHeight || 80;
 
-  return getPosition({
+  // 基础定位（永远要有）
+  const positionStyle = getPosition({
     anchorX: x.value,
     anchorY: y.value,
     anchorWidth: 100,
     anchorHeight: 100,
     elWidth: width,
     elHeight: height,
-    gap: 0, // 建议改小一点
-    placement: "right", // 关键点
+    gap: 0,
+    placement: "right",
   });
+
+  // ② 合并外部样式（只覆盖颜色等）
+  return {
+    ...positionStyle,
+    ...(props.bubbleStyle || {}),
+  };
 });
 // ================== 聊天 ==================
 const messages = ref([
