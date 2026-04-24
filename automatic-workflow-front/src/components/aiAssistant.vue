@@ -189,10 +189,6 @@ const props = defineProps({
     default: () => ({}),
   },
   bubbleAutoClose: {
-    type: Boolean,
-    default: true,
-  },
-  bubbleAutoClose: {
     type: Number,
     default: 0,
   },

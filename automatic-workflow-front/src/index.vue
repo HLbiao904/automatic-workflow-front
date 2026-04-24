@@ -1586,6 +1586,29 @@ function previewAiFlow(previewData) {
   showAIFlowPreview.value = true;
   console.log(JSON.parse(nodesJson), JSON.parse(edgesJson));
 }
+let loadingTimer = null;
+
+function handleGenerateFlowStart() {
+  let dots = 0;
+
+  bubbleActions.value = [];
+  bubbleAutoClose.value = 0;
+
+  bubbleStyle.value = {
+    background: "rgba(236, 253, 245, 0.95)", // 轻微绿色（AI处理中感觉）
+    color: "#059669",
+    border: "1px solid rgba(16, 185, 129, 0.3)",
+    boxShadow: "0 6px 18px rgba(16, 185, 129, 0.25)",
+  };
+
+  bubbleShow.value = true;
+
+  // 动态点点点动画
+  loadingTimer = setInterval(() => {
+    dots = (dots + 1) % 4;
+    bubbleMessage.value = "正在生成工作流" + ".".repeat(dots);
+  }, 500);
+}
 async function handleAIGenerateFlow(aiFlowData, prompt) {
   console.log("AI原始数据:", aiFlowData.nodes, aiFlowData.edges);
   const { nodes: aiNodes, edges: aiEdges } = aiFlowData;
@@ -1636,6 +1659,28 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
   console.log("AI生成的临时节点和连线:", tempNodes.value, tempEdges.value);
 
   ElMessage.success("AI生成流程成功");
+  // 气泡成功提示
+  // ✅ 先停掉 loading
+  if (loadingTimer) {
+    clearInterval(loadingTimer);
+    loadingTimer = null;
+  }
+
+  // ...你原来的逻辑
+
+  // ✅ 再设置成功提示
+  bubbleMessage.value = "工作流生成成功 ✅";
+  bubbleActions.value = [];
+  bubbleAutoClose.value = 3000;
+
+  bubbleStyle.value = {
+    background: "rgba(240, 253, 244, 0.95)",
+    color: "#16a34a",
+    border: "1px solid rgba(34, 197, 94, 0.3)",
+    boxShadow: "0 6px 18px rgba(34, 197, 94, 0.25)",
+  };
+
+  bubbleShow.value = true;
   // AI生成流程成功后,自动预览流程
   preViewAIFlowData.value = {
     nodesJson: JSON.stringify(tempNodes.value),
@@ -1931,6 +1976,7 @@ function resolveSourceHandle(node, edge, index) {
       </div>
       <AiFlowPanel
         ref="aiFlowPanelRef"
+        @generate-flow="handleGenerateFlowStart"
         @generate-success="handleAIGenerateFlow"
         @apply-flow="ApplyAIGenerateFlow"
         @preview-flow="previewAiFlow"

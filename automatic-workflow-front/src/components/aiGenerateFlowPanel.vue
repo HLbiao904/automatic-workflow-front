@@ -108,7 +108,12 @@ import { ElMessage } from "element-plus";
 import service from "../service/index.js";
 import validateAndFixFlow from "../tools/AIAutomaticFlowTools.js";
 const props = defineProps({ refreshKey: [String, Number] });
-const emit = defineEmits(["generate-success", "apply-flow", "preview-flow"]);
+const emit = defineEmits([
+  "generate-flow",
+  "generate-success",
+  "apply-flow",
+  "preview-flow",
+]);
 
 const prompt = ref("");
 const loading = ref(false);
@@ -144,24 +149,45 @@ const templateKeyword = ref("");
 
 const templates = ref([
   {
-    name: "文件处理",
-    desc: "遍历文件并分类处理",
-    content: "遍历文件，根据类型处理并压缩",
+    name: "视频审核自动化",
+    desc: "循环+分支+条件判断综合流程",
+    content:
+      "从接口获取一批视频任务列表，对每个视频进行循环处理；先通过boolean判断是否需要处理，不需要则跳过；需要处理则根据视频类型使用switch分支：广告视频添加水印并截取前10秒，教学视频提取视频信息并生成关键帧截图，普通视频仅获取视频信息；处理完成后通过when判断结果是否成功，成功则写入结果文件，失败则记录错误日志并调用AI分析原因；最后汇总所有结果生成报告并压缩输出",
   },
   {
-    name: "视频处理",
-    desc: "批量视频操作",
-    content: "批量处理视频并添加水印",
+    name: "文件+AI处理",
+    desc: "生成并优化文档内容",
+    content:
+      "创建一个文本文件，写入一段产品介绍内容，使用AI对内容进行优化扩写，并导出为PDF文件",
   },
   {
-    name: "AI生成",
-    desc: "调用AI生成内容",
-    content: "调用AI生成内容并保存",
+    name: "网络数据处理",
+    desc: "请求接口并处理数据",
+    content:
+      "请求一个公开API获取文本数据，将结果保存为本地文件，并对内容进行关键词搜索",
   },
   {
-    name: "批量任务",
-    desc: "批量执行任务",
-    content: "批量处理多个任务并输出结果",
+    name: "视频处理流程",
+    desc: "视频信息获取与处理",
+    content: "获取视频文件信息，截取前10秒视频片段，并生成视频封面截图",
+  },
+  {
+    name: "综合自动化流程",
+    desc: "多节点串联测试（推荐）",
+    content:
+      "从网络接口获取一段文本数据，保存为文件；使用AI对内容进行摘要生成；将摘要写入新文件；最后转换为PDF并压缩打包",
+  },
+  {
+    name: "视频+AI分析",
+    desc: "视频内容智能分析",
+    content:
+      "获取视频关键帧截图，使用AI生成图片描述文本，将描述内容保存为文件并导出为PDF",
+  },
+  {
+    name: "异常处理测试",
+    desc: "测试流程健壮性",
+    content:
+      "请求网络接口，如果成功则保存数据，否则生成错误日志文件，并使用AI分析错误原因",
   },
 ]);
 
@@ -200,7 +226,7 @@ async function generateFlow() {
     ElMessage.warning("请输入需求描述");
     return;
   }
-
+  emit("generate-flow"); // 通知父组件开始生成工作流
   loading.value = true;
 
   try {
