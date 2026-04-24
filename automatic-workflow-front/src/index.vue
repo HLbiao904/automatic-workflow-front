@@ -694,31 +694,13 @@ function validateNodeParams(activeNodes) {
     message: messages[0], // 用第一个提示
   };
 }
-const removeDuplicateStartNode = (nodes) => {
-  let hasStart = false;
-
-  return nodes.filter((node) => {
-    const isStart =
-      node.type === "start" || node.id === "1" || node.data?.label === "开始";
-
-    if (isStart) {
-      if (hasStart) {
-        return false; // 已经有一个开始节点了 → 删除
-      }
-      hasStart = true;
-      return true; // 保留第一个
-    }
-
-    return true; // 其他节点正常保留
-  });
-};
 async function generateEL() {
   // 只取已经连线的节点
   const connectedNodeIds = new Set(
     edges.value.flatMap((e) => [e.source, e.target]),
   );
-
   const activeNodes = nodes.value.filter((n) => connectedNodeIds.has(n.id));
+
   if (activeNodes.length === 0) {
     ElMessage.warning("无可用工作流");
     return;
@@ -728,7 +710,6 @@ async function generateEL() {
     const isValid = validateGraph(activeNodes, edges.value);
     console.log(isValid);
     if (!isValid) {
-      console.log(activeNodes, edges.value);
       ElMessage.warning("流程不合法");
       return;
     }
@@ -773,7 +754,7 @@ async function generateEL() {
                 }
               });
             });
-            console.log("activeNodes:", activeNodes);
+
             res1.nodeIds.forEach((id) => {
               updateNodeStatus(id, "normal");
             });
@@ -1580,10 +1561,10 @@ async function ApplyAIGenerateFlow() {
     nodes.value = nodes.value.filter((n) => n.type.toLowerCase() === "start");
     edges.value = [];
   }
-  // 2. 一次性加入（推荐）
+  // ❗2. 一次性加入（推荐）
   nodes.value.push(...tempNodes.value);
   edges.value.push(...tempEdges.value);
-  // 3. 清空临时数据（防止重复应用）
+  // ❗3. 清空临时数据（防止重复应用）
   tempNodes.value = [];
   tempEdges.value = [];
   // 自动布局
@@ -1634,7 +1615,7 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
     buildNode(nodeTemplate, aiEdges),
   );
 
-  // 3️⃣ 构建临时连线（用 tempNodeList）
+  // 3️⃣ 构建临时连线（❗用 tempNodeList）
   const tempEdgeList = aiEdges.map((edge, index) => {
     const sourceNode = tempNodeList.find((n) => n.id === edge.source);
 
@@ -1648,7 +1629,7 @@ async function handleAIGenerateFlow(aiFlowData, prompt) {
     };
   });
 
-  // 4️⃣ 一次性赋值（不要 push）
+  // 4️⃣ 一次性赋值（❗不要 push）
   tempNodes.value = tempNodeList;
   tempEdges.value = tempEdgeList;
 
@@ -1678,64 +1659,30 @@ async function applyAIFlowFromPreview({ aiNodes, aiEdges }) {
     return;
   }
 
-  const isStartNode = (n) =>
-    n.type === "start" || n.id === "1" || n.data?.label === "开始";
-
-  const removeDuplicateStartNode = (nodes) => {
-    let hasStart = false;
-
-    return nodes.filter((node) => {
-      if (isStartNode(node)) {
-        if (hasStart) return false;
-        hasStart = true;
-      }
-      return true;
-    });
-  };
-
   const action = await confirmReplaceOrNew();
-
-  // 2. replace / new 处理
-  if (action === "replace" || action === "new") {
-    if (action === "new") {
-      const workflowInfo = await openCreateDialog();
-      console.log("新建工作流完成:", workflowInfo);
-    }
-
-    // 只保留 start
+  // 2. 处理 replace / new
+  if (action === "replace") {
     nodes.value = nodes.value.filter((n) => n.type?.toLowerCase() === "start");
+    edges.value = [];
+  } else if (action === "new") {
+    const workflowInfo = await openCreateDialog();
+    console.log("新建工作流完成:", workflowInfo);
 
+    nodes.value = nodes.value.filter((n) => n.type?.toLowerCase() === "start");
     edges.value = [];
   }
 
-  // 3. 处理 AI 节点 ID（防冲突）
-  const prefix = "ai_";
+  // 3. 合并 AI 流程
+  nodes.value.push(...aiNodes);
+  edges.value.push(...aiEdges);
 
-  const aiNodesSafe = aiNodes.map((n) => ({
-    ...n,
-    id: prefix + n.id,
-  }));
+  // 4. 自动连接 start → AI入口节点（核心）
+  connectStartToEntries(aiNodes, edges.value, nodes.value);
 
-  const aiEdgesSafe = aiEdges.map((e) => ({
-    ...e,
-    source: prefix + e.source,
-    target: prefix + e.target,
-  }));
-
-  // 4. 合并节点 + 去重 start（核心）
-  const mergedNodes = [...nodes.value, ...aiNodesSafe];
-  nodes.value = removeDuplicateStartNode(mergedNodes);
-
-  // 5. 合并边
-  edges.value.push(...aiEdgesSafe);
-
-  // 6. 自动连接 start → AI入口节点
-  connectStartToEntries(aiNodesSafe, edges.value, nodes.value);
-
-  // 7. 自动布局
+  // 5. 自动布局
   autoLayout("LR");
 
-  // 8. 生成表达式
+  // 6. 生成表达式
   const elExpression = compileMergeFlow(nodes.value, edges.value);
   console.log("生成的EL表达式:", elExpression);
 
