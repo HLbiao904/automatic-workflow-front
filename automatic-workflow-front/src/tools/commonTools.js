@@ -99,7 +99,117 @@ export function layoutNodes(
     edges,
   };
 }
+// 自动布局函数（优化版）
+export function layoutNodesWithStep(
+  nodes = [],
+  edges = [],
+  { direction = "LR", compact = false } = {},
+) {
+  const g = new dagre.graphlib.Graph();
 
+  g.setGraph({
+    rankdir: direction,
+    nodesep: compact ? 30 : 80,
+    ranksep: compact ? 80 : 30,
+    marginx: 20,
+    marginy: 20,
+  });
+
+  g.setDefaultEdgeLabel(() => ({}));
+
+  // 👉 记录节点尺寸（后面要用）
+  const nodeSizeMap = {};
+
+  nodes.forEach((node) => {
+    let width = 150;
+    let height = 60;
+
+    // 🔹 start（最小）
+    if (node.type === "start") {
+      width = 100;
+      height = 50;
+    }
+
+    // 🔹 common（动态宽度）
+    else if (node.type === "common") {
+      const textLength = node.data?.label?.length || 0;
+
+      width = Math.max(
+        compact ? 90 : 110,
+        Math.min(compact ? 140 : 180, textLength * 9),
+      );
+    }
+
+    // 🔹 boolean / when
+    else if (["boolean", "when"].includes(node.type)) {
+      width = compact ? 160 : 190;
+      height = 70;
+    }
+
+    // 🔹 switch
+    else if (node.type === "switch") {
+      width = compact ? 180 : 220;
+      height = 80;
+    }
+
+    // 🔹 for
+    else if (node.type === "for") {
+      width = compact ? 150 : 180;
+      height = 70;
+    }
+
+    nodeSizeMap[node.id] = { width, height };
+
+    g.setNode(node.id, { width, height });
+  });
+
+  edges.forEach((edge) => {
+    g.setEdge(edge.source, edge.target, {
+      weight: 2,
+      minlen: compact ? 1 : 2,
+    });
+  });
+
+  dagre.layout(g);
+
+  // 👉 计算节点位置（修复偏移问题 + 设置方向）
+  let layoutedNodes = nodes.map((node) => {
+    const { x, y } = g.node(node.id);
+    const { width, height } = nodeSizeMap[node.id];
+
+    return {
+      ...node,
+      position: {
+        x: x - width / 2,
+        y: y - height / 2,
+      },
+      sourcePosition: direction === "LR" ? "right" : "bottom",
+      targetPosition: direction === "LR" ? "left" : "top",
+    };
+  });
+
+  // 👉 横向压缩（可选）
+  if (compact) {
+    layoutedNodes = layoutedNodes.map((n) => ({
+      ...n,
+      position: {
+        x: n.position.x * 0.8,
+        y: n.position.y,
+      },
+    }));
+  }
+
+  // 👉 统一改成直角线（关键）
+  const layoutedEdges = edges.map((edge) => ({
+    ...edge,
+    type: "step", // 👈 直角线
+  }));
+
+  return {
+    nodes: layoutedNodes,
+    edges: layoutedEdges,
+  };
+}
 // 流程连接函数：将“开始”节点连接到所有没有入边的 AI 流程节点
 export function connectStartToEntries(aiNodes, allEdges, allNodes) {
   const startNode = allNodes.find((n) => n.type?.toLowerCase() === "start");

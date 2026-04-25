@@ -22,5 +22,9 @@ export const useCommandStore = defineStore("command", {
     setData(data) {
       Object.assign(this, data);
     },
+    setRole(role) {
+      this.role = role;
+      localStorage.setItem("role", role);
+    },
   },
 });

@@ -30,7 +30,7 @@ import { dynamicCompileFlow } from "./tools/dynamicComplier.js";
 import { validateGraph } from "./tools/validate.js";
 // import default controls styles
 import "@vue-flow/controls/dist/style.css";
-import { layoutNodes } from "./tools/commonTools.js";
+import { layoutNodes, layoutNodesWithStep } from "./tools/commonTools.js";
 
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -1514,6 +1514,7 @@ const autoLayout = async (direction) => {
       // compact: true,
     });
     nodes.value = res.nodes;
+    // edges.value = res.edges;
   });
 };
 async function useTemplate(templateData) {

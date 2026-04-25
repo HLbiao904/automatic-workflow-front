@@ -81,7 +81,11 @@
 
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="node">节点配置</el-dropdown-item>
+            <el-dropdown-item
+              command="node"
+              v-if="commandStore.role === 'ADMIN'"
+              >节点配置</el-dropdown-item
+            >
             <el-dropdown-item command="user">用户配置</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -98,6 +102,7 @@ import {
   ref,
   watch,
   watchEffect,
+  onMounted,
 } from "vue";
 import { useRouter } from "vue-router";
 import { useCommandStore } from "@/stores/command.js";

@@ -152,7 +152,7 @@ const templates = ref([
     name: "视频审核自动化",
     desc: "循环+分支+条件判断综合流程",
     content:
-      "从接口获取一批视频任务列表，对每个视频进行循环处理；先通过boolean判断是否需要处理，不需要则跳过；需要处理则根据视频类型使用switch分支：广告视频添加水印并截取前10秒，教学视频提取视频信息并生成关键帧截图，普通视频仅获取视频信息；处理完成后通过when判断结果是否成功，成功则写入结果文件，失败则记录错误日志并调用AI分析原因；最后汇总所有结果生成报告并压缩输出",
+      "从接口获取视频任务列表并逐个处理，先判断任务是否需要执行，不需要则跳过；需要执行时根据视频类型进行分支处理（广告视频添加水印并截取片段，教学视频提取信息并生成截图，普通视频仅获取基础信息）；处理完成后判断结果是否成功，成功则写入结果文件，失败则记录错误并进行原因分析；最后汇总所有处理结果生成报告并压缩输出。",
   },
   {
     name: "文件+AI处理",
@@ -234,6 +234,7 @@ async function generateFlow() {
       memoryId: Date.now(),
       message: prompt.value,
     });
+    console.log("AI原始返回:", response);
 
     const aiFlowData = parseAIStreamData(response.data);
     console.log("AI原始返回数据:", aiFlowData);

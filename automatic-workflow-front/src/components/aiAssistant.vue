@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import lottie from "lottie-web";
 import service from "@/service/index.js";
 import animationData from "@/json/Anima Bot.json";
@@ -199,6 +199,7 @@ const emit = defineEmits([
   "update:bubbleMessage",
   "update-workflow-data",
 ]);
+
 onMounted(() => {
   animation = lottie.loadAnimation({
     container: lottieRef.value,
@@ -407,10 +408,11 @@ const input = ref("");
 const scrollToBottom = () => {
   nextTick(() => {
     const el = document.querySelector(".content");
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   });
 };
-
 const sendMessage = async () => {
   if (!input.value.trim()) return;
 
@@ -792,6 +794,7 @@ const handleClear = async () => {
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   ::v-deep(.el-card__header) {

@@ -86,8 +86,10 @@ import { ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import service from "@/service";
 import { useRouter } from "vue-router";
+import { useCommandStore } from "../stores/command.js";
 
 const router = useRouter();
+const commandStore = useCommandStore();
 const activeTab = ref("login");
 
 const loginForm = ref({
@@ -122,6 +124,7 @@ async function handleLogin() {
     localStorage.setItem("userName", result.data.user.username);
     localStorage.setItem("token", result.data.token);
     localStorage.setItem("role", result.data.user.role);
+    commandStore.setRole(result.data.user.role);
     ElMessage.success("登录成功");
     // 跳转到首页
     router.push("/");
