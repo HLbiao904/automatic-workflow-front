@@ -1,3 +1,4 @@
+currentVersion
 <script setup>
 import { ref, onMounted, markRaw, watch, onUpdated, computed } from "vue";
 import { ElMessage } from "element-plus";
@@ -59,7 +60,10 @@ const versions = ref([]);
 
 const previewNodes = ref([]);
 const previewEdges = ref([]);
-
+const userInfo = ref({
+  username: localStorage.getItem("userName") || "未知用户",
+  avatar: localStorage.getItem("avatar") || defaultAvatar,
+});
 async function loadVersions(workflowId = null) {
   if (!props.workflowId) return;
 
@@ -183,11 +187,15 @@ onMounted(loadVersions);
             <div class="user-info">
               <img
                 class="avatar"
-                :src="currentVersion?.avatar || defaultAvatar"
+                :src="
+                  userInfo.avatar || currentVersion?.avatar || defaultAvatar
+                "
               />
               <div class="user-text">
                 <div class="username">
-                  {{ currentVersion?.username || "未知用户" }}
+                  {{
+                    userInfo.username || currentVersion?.username || "未知用户"
+                  }}
                 </div>
                 <div class="label">创建者</div>
               </div>

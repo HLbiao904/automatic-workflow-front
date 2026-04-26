@@ -124,6 +124,7 @@ async function handleLogin() {
     localStorage.setItem("userName", result.data.user.username);
     localStorage.setItem("token", result.data.token);
     localStorage.setItem("role", result.data.user.role);
+    localStorage.setItem("avatar", result.data.user.avatar);
     commandStore.setRole(result.data.user.role);
     ElMessage.success("登录成功");
     // 跳转到首页

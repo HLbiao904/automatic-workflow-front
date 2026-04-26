@@ -1521,6 +1521,11 @@ async function useTemplate(templateData) {
   viewMode.value = "editor";
   nodes.value = stripNodeStatus(JSON.parse(templateData.nodesJson));
   edges.value = stripEdgeStatus(JSON.parse(templateData.edgesJson));
+  // 使用模版后,将工作流数据传递给AI助手
+  curWorkflowData.value = {
+    nodesJson: templateData.nodesJson,
+    edgesJson: templateData.edgesJson,
+  };
   isDirty.value = true;
   // 使用模版时自动创建工作流
   const res = await service.post("/api/workflow/create", {
