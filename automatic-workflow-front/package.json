@@ -20,6 +20,7 @@
     "@vue-flow/core": "^1.48.1",
     "@vue-flow/minimap": "^1.5.4",
     "@vue-flow/node-toolbar": "^1.1.1",
+    "animejs": "^4.4.1",
     "axios": "^1.13.2",
     "dagre": "^0.8.5",
     "echarts": "^6.0.0",

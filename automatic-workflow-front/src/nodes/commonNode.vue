@@ -95,6 +95,36 @@ const emit = defineEmits([
   "duplicate-node",
   "replace-node",
 ]);
+const props = defineProps({
+  id: {
+    type: String,
+    required: true,
+  },
+  data: {
+    type: Object,
+    required: true,
+  },
+  label: {
+    type: String,
+    required: true,
+  },
+  type: {
+    type: String,
+    required: true,
+  },
+  position: {
+    type: Object,
+    required: true,
+  },
+  showToolBar: {
+    type: Boolean,
+    default: true,
+  },
+  closeMorePanel: {
+    type: Boolean,
+    default: false,
+  },
+});
 const nodeRef = ref(null);
 const panelStyle = ref({
   top: "0px",
@@ -128,7 +158,6 @@ function handleClickOutside(e) {
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
 });
-
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleClickOutside);
 });
@@ -235,36 +264,6 @@ function addNode() {
 const isConnected = computed(() =>
   edges.value.some((e) => e.source === props.id && e.sourceHandle === outputId),
 );
-const props = defineProps({
-  id: {
-    type: String,
-    required: true,
-  },
-  data: {
-    type: Object,
-    required: true,
-  },
-  label: {
-    type: String,
-    required: true,
-  },
-  type: {
-    type: String,
-    required: true,
-  },
-  position: {
-    type: Object,
-    required: true,
-  },
-  showToolBar: {
-    type: Boolean,
-    default: true,
-  },
-  closeMorePanel: {
-    type: Boolean,
-    default: false,
-  },
-});
 watch(
   () => props.closeMorePanel,
   (newVal) => {
@@ -432,7 +431,7 @@ watch(
   }
 }
 
-.common-node.node-running {
+/* .common-node.node-running {
   border: 3px solid transparent;
   border-radius: 8px;
   background: linear-gradient(#fff, #fff) padding-box,
@@ -442,11 +441,6 @@ watch(
 
   animation: borderFlow 1.2s linear infinite;
 }
-.common-node.node-lack-param {
-  border: 2px solid #ff9900;
-  border-radius: 8px;
-}
-
 @keyframes borderFlow {
   0% {
     background-position: 0% 50%;
@@ -454,8 +448,92 @@ watch(
   100% {
     background-position: 300% 50%;
   }
+} */
+.common-node.node-running {
+  position: relative;
+  border-radius: 12px;
+  background: #fff;
+  z-index: 0;
 }
+.common-node.node-running::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 14px;
+  padding: 2px;
 
+  /* 🌊 多色流动（关键） */
+  background: linear-gradient(
+    90deg,
+    #00f0ff,
+    #00ffa6,
+    #00ccff,
+    #7cffcb,
+    #00f0ff
+  );
+
+  background-size: 400% 400%;
+
+  /* ✨ 波动核心 */
+  animation: flowBorder 3s linear infinite;
+
+  /* 只显示边框 */
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+
+  filter: blur(0.6px);
+  opacity: 0.9;
+}
+@keyframes flowBorder {
+  0% {
+    background-position: 0% 50%;
+    transform: scale(1);
+  }
+
+  25% {
+    background-position: 50% 100%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+    transform: scale(1.01);
+  }
+
+  75% {
+    background-position: 50% 0%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+    transform: scale(1);
+  }
+}
+.common-node.node-running::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+
+  background: radial-gradient(circle, rgba(0, 255, 200, 0.25), transparent 60%);
+
+  animation: ripple 2.5s ease-in-out infinite;
+}
+@keyframes ripple {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 0.9;
+  }
+}
+.common-node.node-lack-param {
+  border: 2px solid #ff9900;
+  border-radius: 8px; /*  */
+}
 .common-node.node-success {
   border: 2px solid #00cc66;
   border-radius: 8px;
